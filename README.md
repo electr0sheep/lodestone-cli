@@ -6,7 +6,7 @@ for Lodestone.
 [GO](https://golang.org/)
 ## Install
 ```
-go get github.com/electr0sheep/lodestone-cli
+go get github.com/electr0sheep/github.com/electr0sheep/lodestone-cli
 ```
 ### Usage
 ```

@@ -17,7 +17,8 @@ package cmd
 
 import (
 	"fmt"
-	lodestoneWrapper "lodestone-cli/lodestone"
+
+	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
 
 	"github.com/spf13/cobra"
 )

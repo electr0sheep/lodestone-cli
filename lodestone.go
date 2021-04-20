@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "lodestone-cli/cmd"
+import "github.com/electr0sheep/lodestone-cli/cmd"
 
 func main() {
 	cmd.Execute()

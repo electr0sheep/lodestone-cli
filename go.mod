@@ -1,4 +1,4 @@
-module lodestone-cli
+module github.com/electr0sheep/lodestone-cli
 
 go 1.16
 
