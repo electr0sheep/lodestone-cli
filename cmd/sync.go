@@ -26,9 +26,11 @@ import (
 
 // syncCmd represents the sync command
 var syncCmd = &cobra.Command{
-	Use:   "sync [character ID]",
-	Short: "Syncs private data to ffxivcollect.com",
-	Args:  cobra.ExactArgs(1),
+	Use:                   "sync [character ID]",
+	Short:                 "Syncs private data to ffxivcollect.com",
+	Args:                  cobra.ExactArgs(1),
+	Example:               "lodestone sync 12345",
+	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]
 
