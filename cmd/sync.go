@@ -34,6 +34,9 @@ var syncCmd = &cobra.Command{
 
 		fmt.Printf("Syncing blue magic...\n")
 		syncBlueMagic(character_id)
+
+		fmt.Printf("Syncing orchestrions...\n")
+		syncOrchestrions(character_id)
 	},
 }
 
@@ -70,5 +73,27 @@ func syncBlueMagic(character_id string) {
 	}
 	if noSpellsAdded {
 		fmt.Printf("All blue magic data already synced\n")
+	}
+}
+
+func syncOrchestrions(character_id string) {
+	orchestrions := lodestoneWrapper.GetOrchestrions(character_id)
+	orchestrionMap := ffxivcollectWrapper.GetOrchestrions()
+
+	noOrchestrionsAdded := true
+	for _, orchestrionName := range orchestrions {
+		orchestrion := orchestrionMap[orchestrionName]
+		if !orchestrion.Obtained {
+			noOrchestrionsAdded = false
+			orchestrionSucessfullyAdded := ffxivcollectWrapper.AddOrchestrion(orchestrionName, orchestrion.Id)
+			if orchestrionSucessfullyAdded {
+				fmt.Printf("Checked %s\n", orchestrionName)
+			} else {
+				fmt.Printf("Problem checking %s\n", orchestrionName)
+			}
+		}
+	}
+	if noOrchestrionsAdded {
+		fmt.Printf("All orchestrion data already synced\n")
 	}
 }
