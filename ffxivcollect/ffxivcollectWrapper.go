@@ -231,7 +231,7 @@ func GetCards() map[string]TripleTriadCard {
 		id, _ := cardElement.Find(".name").Attr("href")
 		id = strings.Split(id, "/")[2]
 		converted_id, _ := strconv.Atoi(id)
-		obtained := cardElement.HasClass("owned")
+		obtained := cardElement.HasClass("has-card")
 		cardMap[name] = TripleTriadCard{Name: name, Id: converted_id, Obtained: obtained}
 	})
 	return cardMap
