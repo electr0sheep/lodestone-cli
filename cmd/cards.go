@@ -13,9 +13,10 @@ var cardsCmd = &cobra.Command{
 	Short: "Gets collected triple triad cards from Lodestone",
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]
-		achievements := lodestoneWrapper.GetCards(character_id)
-		for _, achievement := range achievements {
-			fmt.Println(achievement)
+		cards := lodestoneWrapper.GetCards(character_id)
+		fmt.Printf("You have %d cards:\n", len(cards))
+		for _, card := range cards {
+			fmt.Println(card)
 		}
 	},
 }

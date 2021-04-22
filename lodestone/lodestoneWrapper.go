@@ -57,6 +57,22 @@ func getSessionToken() {
 
 // Sets up a request
 func setupRequest(endpoint string, character_id string) *http.Request {
+	lodestone_session_token := viper.Get("lodestone_session_token")
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://na.finalfantasyxiv.com/lodestone/character/%s/%s", character_id, endpoint), nil)
+	if err != nil {
+		panic(err)
+	}
+
+	if lodestone_session_token != "" {
+		req.Header.Set("Cookie", fmt.Sprintf("ldst_sess=%s;", lodestone_session_token))
+	}
+
+	return req
+}
+
+// Sets up a request
+func setupMobileRequest(endpoint string, character_id string) *http.Request {
 	USER_AGENT := "Mozilla/5.0 (Linux; Android 4.0.4; Galaxy Nexus Build/IMM76B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.76 Mobile Safari/537.36"
 
 	lodestone_session_token := viper.Get("lodestone_session_token")
@@ -88,7 +104,7 @@ func GetCards(character_id string) []string {
 			2: "...",
 		}
 		fmt.Printf("\rGetting card page %d%s", page, progressIndicator[(page-1)%3])
-		req := setupRequest(fmt.Sprintf("goldsaucer/tripletriad//?page=%d", page), character_id)
+		req := setupRequest(fmt.Sprintf("goldsaucer/tripletriad/?hold=1&page=%d", page), character_id)
 
 		resp, err := client.Do(req)
 
@@ -100,7 +116,7 @@ func GetCards(character_id string) []string {
 		if err != nil {
 			panic(err)
 		}
-		cardElements := doc.Find(".js__btn_press").Find(".name")
+		cardElements := doc.Find(".name_inner")
 
 		if cardElements.Length() == 0 {
 			fmt.Printf("\r                                 \r")
@@ -108,7 +124,6 @@ func GetCards(character_id string) []string {
 		} else {
 			cardElements.Each(func(_ int, cardElement *goquery.Selection) {
 				name := cardElement.Text()
-				name = strings.TrimSpace(name)
 				cards = append(cards, name)
 			})
 		}
@@ -130,7 +145,7 @@ func GetAchievements(character_id string) []string {
 			2: "...",
 		}
 		fmt.Printf("\rGetting achievement page %d%s", page, progressIndicator[(page-1)%3])
-		req := setupRequest(fmt.Sprintf("achievement/?page=%d", page), character_id)
+		req := setupMobileRequest(fmt.Sprintf("achievement/?page=%d", page), character_id)
 
 		resp, err := client.Do(req)
 
@@ -163,7 +178,7 @@ func GetAchievements(character_id string) []string {
 func GetMinions(character_id string) []string {
 	client := &http.Client{}
 
-	req := setupRequest("minion", character_id)
+	req := setupMobileRequest("minion", character_id)
 
 	resp, err := client.Do(req)
 
@@ -190,7 +205,7 @@ func GetMinions(character_id string) []string {
 // Gets mounts from Lodestone
 func GetMounts(character_id string) []string {
 	client := &http.Client{}
-	req := setupRequest("mount", character_id)
+	req := setupMobileRequest("mount", character_id)
 
 	resp, err := client.Do(req)
 
@@ -217,7 +232,7 @@ func GetMounts(character_id string) []string {
 // Gets orchestrions from Lodestone
 func GetOrchestrions(character_id string) []string {
 	client := &http.Client{}
-	req := setupRequest("orchestrion", character_id)
+	req := setupMobileRequest("orchestrion", character_id)
 
 	resp, err := client.Do(req)
 
@@ -250,7 +265,7 @@ func GetOrchestrions(character_id string) []string {
 // Gets blue magic spellbook from Lodestone
 func GetSpells(character_id string) []string {
 	client := &http.Client{}
-	req := setupRequest("bluemage", character_id)
+	req := setupMobileRequest("bluemage", character_id)
 
 	resp, err := client.Do(req)
 
@@ -260,7 +275,7 @@ func GetSpells(character_id string) []string {
 
 	if resp.StatusCode == 404 {
 		getSessionToken()
-		req = setupRequest("bluemage", character_id)
+		req = setupMobileRequest("bluemage", character_id)
 		resp, err = client.Do(req)
 		if err != nil {
 			panic(err)
