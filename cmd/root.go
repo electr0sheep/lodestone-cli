@@ -29,7 +29,7 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "lodestone",
+	Use:   "lodestone-cli",
 	Short: "A CLI for retrieving information from Lodestone",
 	// 	Long: `A longer description that spans multiple lines and likely contains
 	// examples and usage of using your application. For example:
@@ -76,8 +76,9 @@ func initConfig() {
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".lodestone")
 		viper.SetConfigType("yaml")
-		viper.SetDefault("lodestone_session_token", nil)
-		viper.SetDefault("ffxiv_collect_session_token", nil)
+		viper.SetDefault("lodestone_session_token", "")
+		viper.SetDefault("ffxiv_collect_session_token", "")
+		viper.SetDefault("ffxiv_collect_authenticity_token", "")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

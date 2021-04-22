@@ -83,8 +83,9 @@ func AddOrchestrion(orchestrion_name string, orchestrion_id int) bool {
 }
 
 func GetBlueMagicSpells() map[string]BlueMagicSpell {
-	// TODO: We need to figure out how to make sure the user is logged in for this
-	// If the user is not logged in, we can't tell which spells we need to add
+	if viper.GetString("ffxiv_collect_session_token") == "" {
+		getSessionToken()
+	}
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://ffxivcollect.com/spells", nil)
 	if err != nil {
@@ -120,8 +121,9 @@ func GetBlueMagicSpells() map[string]BlueMagicSpell {
 }
 
 func GetOrchestrions() map[string]Orchestrion {
-	// TODO: We need to figure out how to make sure the user is logged in for this
-	// If the user is not logged in, we can't tell which spells we need to add
+	if viper.GetString("ffxiv_collect_session_token") == "" {
+		getSessionToken()
+	}
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://ffxivcollect.com/orchestrions", nil)
 	if err != nil {
