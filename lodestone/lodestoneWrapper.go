@@ -75,6 +75,48 @@ func setupRequest(endpoint string, character_id string) *http.Request {
 	return req
 }
 
+// Gets triple triad cards from Lodestone
+func GetCards(character_id string) []string {
+	client := &http.Client{}
+	morePages := true
+	var cards []string
+
+	for page := 1; morePages; page++ {
+		progressIndicator := map[int]string{
+			0: ".  ",
+			1: ".. ",
+			2: "...",
+		}
+		fmt.Printf("\rGetting card page %d%s", page, progressIndicator[(page-1)%3])
+		req := setupRequest(fmt.Sprintf("goldsaucer/tripletriad//?page=%d", page), character_id)
+
+		resp, err := client.Do(req)
+
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+		doc, err := goquery.NewDocumentFromReader(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		cardElements := doc.Find(".js__btn_press").Find(".name")
+
+		if cardElements.Length() == 0 {
+			fmt.Printf("\r                                 \r")
+			morePages = false
+		} else {
+			cardElements.Each(func(_ int, cardElement *goquery.Selection) {
+				name := cardElement.Text()
+				name = strings.TrimSpace(name)
+				cards = append(cards, name)
+			})
+		}
+	}
+
+	return cards
+}
+
 // Gets achievements from Lodestone
 func GetAchievements(character_id string) []string {
 	client := &http.Client{}
@@ -100,14 +142,14 @@ func GetAchievements(character_id string) []string {
 		if err != nil {
 			panic(err)
 		}
-		achievementsElements := doc.Find(".entry__achievement").Find(".entry__activity__txt")
+		achievementElements := doc.Find(".entry__achievement").Find(".entry__activity__txt")
 
-		if achievementsElements.Length() == 0 {
+		if achievementElements.Length() == 0 {
 			fmt.Printf("\r                                 \r")
 			morePages = false
 		} else {
-			achievementsElements.Each(func(_ int, achievementsElement *goquery.Selection) {
-				name := achievementsElements.Text()
+			achievementElements.Each(func(_ int, achievementElement *goquery.Selection) {
+				name := achievementElement.Text()
 				name = strings.Split(name, "\"")[1]
 				achievements = append(achievements, name)
 			})
