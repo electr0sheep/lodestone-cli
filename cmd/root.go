@@ -16,8 +16,10 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -79,6 +81,12 @@ func initConfig() {
 		viper.SetDefault("lodestone_session_token", "")
 		viper.SetDefault("ffxiv_collect_session_token", "")
 		viper.SetDefault("ffxiv_collect_authenticity_token", "")
+		// create the config file if it doesn't already exist
+		path := filepath.Join(home, ".lodestone.yaml")
+		_, err = os.Stat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			os.Create(path)
+		}
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
