@@ -18,6 +18,7 @@ package cmd
 import (
 	"fmt"
 
+	ffxivcollectWrapper "github.com/electr0sheep/lodestone-cli/ffxivcollect"
 	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
 
 	"github.com/spf13/cobra"
@@ -25,55 +26,14 @@ import (
 
 // syncCmd represents the sync command
 var syncCmd = &cobra.Command{
-	Use:   "sync [character ID] [session token]",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Args: cobra.ExactArgs(2),
+	Use:   "sync [character ID]",
+	Short: "Syncs private data to ffxivcollect.com",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]
 
-		mounts := lodestoneWrapper.GetMounts(character_id)
-		fmt.Println("MOUNTS")
-		for _, mount := range mounts {
-			fmt.Println(mount)
-		}
-
-		fmt.Printf("\n\n\n")
-
-		minions := lodestoneWrapper.GetMinions(character_id)
-		fmt.Println("MINIONS")
-		for _, minion := range minions {
-			fmt.Println(minion)
-		}
-
-		fmt.Printf("\n\n\n")
-
-		orchestrions := lodestoneWrapper.GetOrchestrions(character_id)
-		fmt.Println("ORCHESTRIONS")
-		for _, orchestrion := range orchestrions {
-			fmt.Println(orchestrion)
-		}
-
-		fmt.Printf("\n\n\n")
-
-		spells := lodestoneWrapper.GetSpells(character_id)
-		fmt.Println("SPELLS")
-		for _, spell := range spells {
-			fmt.Println(spell)
-		}
-
-		fmt.Printf("\n\n\n")
-
-		achievements := lodestoneWrapper.GetAchievements(character_id)
-		fmt.Println("ACHIEVEMENTS")
-		for _, achievement := range achievements {
-			fmt.Println(achievement)
-		}
+		fmt.Printf("Syncing blue magic...\n")
+		syncBlueMagic(character_id)
 	},
 }
 
@@ -89,4 +49,26 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// syncCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func syncBlueMagic(character_id string) {
+	spells := lodestoneWrapper.GetSpells(character_id)
+	blueMagicSpellMap := ffxivcollectWrapper.GetBlueMagicSpells()
+
+	noSpellsAdded := true
+	for _, spell := range spells {
+		blueMagicSpell := blueMagicSpellMap[spell]
+		if !blueMagicSpell.Obtained {
+			noSpellsAdded = false
+			spellSucessfullyAdded := ffxivcollectWrapper.AddBlueMagicSpell(spell, blueMagicSpell.Id)
+			if spellSucessfullyAdded {
+				fmt.Printf("Checked %s\n", spell)
+			} else {
+				fmt.Printf("Problem checking %s\n", spell)
+			}
+		}
+	}
+	if noSpellsAdded {
+		fmt.Printf("All blue magic data already synced\n")
+	}
 }

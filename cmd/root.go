@@ -76,7 +76,8 @@ func initConfig() {
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".lodestone")
 		viper.SetConfigType("yaml")
-		viper.SetDefault("session_token", nil)
+		viper.SetDefault("lodestone_session_token", nil)
+		viper.SetDefault("ffxiv_collect_session_token", nil)
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

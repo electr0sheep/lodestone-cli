@@ -10,5 +10,5 @@ go get github.com/electr0sheep/github.com/electr0sheep/lodestone-cli
 ```
 ### Usage
 ```
-go run lodestone.go help
+lodestone-cli help
 ```

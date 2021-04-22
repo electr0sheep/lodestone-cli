@@ -45,13 +45,13 @@ func getSessionToken() {
 	// fmt.Printf("Square Enix Password: %s\n", password)
 	// return ""
 	tokenPrompt := promptui.Prompt{
-		Label: "Session Token",
+		Label: "Lodestone Session Token",
 	}
-	session_token, err := tokenPrompt.Run()
+	lodestone_session_token, err := tokenPrompt.Run()
 	if err != nil {
 		panic(err)
 	}
-	viper.Set("session_token", session_token)
+	viper.Set("lodestone_session_token", lodestone_session_token)
 	viper.WriteConfig()
 }
 
@@ -59,7 +59,7 @@ func getSessionToken() {
 func setupRequest(endpoint string, character_id string) *http.Request {
 	USER_AGENT := "Mozilla/5.0 (Linux; Android 4.0.4; Galaxy Nexus Build/IMM76B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.76 Mobile Safari/537.36"
 
-	session_token := viper.Get("session_token")
+	lodestone_session_token := viper.Get("lodestone_session_token")
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://na.finalfantasyxiv.com/lodestone/character/%s/%s", character_id, endpoint), nil)
 	if err != nil {
@@ -68,8 +68,8 @@ func setupRequest(endpoint string, character_id string) *http.Request {
 
 	req.Header.Set("User-Agent", USER_AGENT)
 
-	if session_token != "" {
-		req.Header.Set("Cookie", fmt.Sprintf("ldst_sess=%s;", session_token))
+	if lodestone_session_token != "" {
+		req.Header.Set("Cookie", fmt.Sprintf("ldst_sess=%s;", lodestone_session_token))
 	}
 
 	return req
@@ -106,8 +106,8 @@ func GetAchievements(character_id string) []string {
 			fmt.Printf("\r                                 \r")
 			morePages = false
 		} else {
-			achievementsElements.Each(func(i int, s *goquery.Selection) {
-				name := s.Text()
+			achievementsElements.Each(func(_ int, achievementsElement *goquery.Selection) {
+				name := achievementsElements.Text()
 				name = strings.Split(name, "\"")[1]
 				achievements = append(achievements, name)
 			})
@@ -137,8 +137,8 @@ func GetMinions(character_id string) []string {
 
 	var minions []string
 
-	minionElements.Each(func(i int, s *goquery.Selection) {
-		name := s.Text()
+	minionElements.Each(func(_ int, minionElement *goquery.Selection) {
+		name := minionElement.Text()
 		minions = append(minions, name)
 	})
 
@@ -164,8 +164,8 @@ func GetMounts(character_id string) []string {
 
 	var mounts []string
 
-	mountElements.Each(func(i int, s *goquery.Selection) {
-		name := s.Text()
+	mountElements.Each(func(_ int, mountElement *goquery.Selection) {
+		name := mountElement.Text()
 		mounts = append(mounts, name)
 	})
 
@@ -191,8 +191,8 @@ func GetOrchestrions(character_id string) []string {
 
 	var orchestrions []string
 
-	orchestrionElements.Each(func(i int, s *goquery.Selection) {
-		name := s.Text()
+	orchestrionElements.Each(func(_ int, orchestrionElement *goquery.Selection) {
+		name := orchestrionElement.Text()
 		name = strings.ReplaceAll(name, "\t", "")
 		name = strings.ReplaceAll(name, "\n", "")
 		orchestrions = append(orchestrions, name)
@@ -232,8 +232,8 @@ func GetSpells(character_id string) []string {
 
 	var spells []string
 
-	spellElements.Each(func(i int, s *goquery.Selection) {
-		name := s.Text()
+	spellElements.Each(func(_ int, spellElement *goquery.Selection) {
+		name := spellElement.Text()
 		name = strings.ReplaceAll(name, "\t", "")
 		name = strings.ReplaceAll(name, "\n", "")
 		spells = append(spells, name)
