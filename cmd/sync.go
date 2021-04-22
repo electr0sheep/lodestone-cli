@@ -24,6 +24,9 @@ var syncCmd = &cobra.Command{
 
 		fmt.Printf("Syncing orchestrions...\n")
 		syncOrchestrions(character_id)
+
+		fmt.Printf("Syncing triple triad cards...\n")
+		syncCards(character_id)
 	},
 }
 
@@ -82,5 +85,27 @@ func syncOrchestrions(character_id string) {
 	}
 	if noOrchestrionsAdded {
 		fmt.Printf("All orchestrion data already synced\n")
+	}
+}
+
+func syncCards(character_id string) {
+	cards := lodestoneWrapper.GetCards(character_id)
+	cardMap := ffxivcollectWrapper.GetCards()
+
+	noCardsAdded := true
+	for _, cardName := range cards {
+		card := cardMap[cardName]
+		if !card.Obtained {
+			noCardsAdded = false
+			cardSucessfullyAdded := ffxivcollectWrapper.AddCard(cardName, card.Id)
+			if cardSucessfullyAdded {
+				fmt.Printf("Checked %s\n", cardName)
+			} else {
+				fmt.Printf("Problem checking %s\n", cardName)
+			}
+		}
+	}
+	if noCardsAdded {
+		fmt.Printf("All triple triad data already synced\n")
 	}
 }
