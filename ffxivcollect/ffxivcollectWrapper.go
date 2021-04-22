@@ -32,15 +32,7 @@ func getSessionToken() {
 	if err != nil {
 		panic(err)
 	}
-	authenticityTokenPrompt := promptui.Prompt{
-		Label: "FFXIV Collect Authenticity Token",
-	}
-	ffxiv_collect_authenticity_token, err := authenticityTokenPrompt.Run()
-	if err != nil {
-		panic(err)
-	}
 	viper.Set("ffxiv_collect_session_token", ffxiv_collect_session_token)
-	viper.Set("ffxiv_collect_authenticity_token", ffxiv_collect_authenticity_token)
 	viper.WriteConfig()
 }
 
@@ -108,6 +100,12 @@ func GetBlueMagicSpells() map[string]BlueMagicSpell {
 	if err != nil {
 		panic(err)
 	}
+
+	// update authenticity token
+	ffxiv_collect_authenticity_token := strings.Split(doc.Find("script").Text(), "'")[9]
+	viper.Set("ffxiv_collect_authenticity_token", ffxiv_collect_authenticity_token)
+	viper.WriteConfig()
+
 	blueMagicSpellMap := make(map[string]BlueMagicSpell)
 	blueMagicElements := doc.Find(".collectable")
 	blueMagicElements.Each(func(_ int, blueMagicElement *goquery.Selection) {
@@ -139,6 +137,12 @@ func GetOrchestrions() map[string]Orchestrion {
 	if err != nil {
 		panic(err)
 	}
+
+	// update authenticity token
+	ffxiv_collect_authenticity_token := strings.Split(doc.Find("script").Text(), "'")[9]
+	viper.Set("ffxiv_collect_authenticity_token", ffxiv_collect_authenticity_token)
+	viper.WriteConfig()
+
 	orchestrionMap := make(map[string]Orchestrion)
 	orchestrionElements := doc.Find(".collectable")
 	orchestrionElements.Each(func(_ int, orchestrionElement *goquery.Selection) {
