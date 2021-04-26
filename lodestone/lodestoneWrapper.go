@@ -297,6 +297,7 @@ func GetSpells(character_id string) []string {
 		name := spellElement.Text()
 		name = strings.ReplaceAll(name, "\t", "")
 		name = strings.ReplaceAll(name, "\n", "")
+		name = strings.ReplaceAll(name, "of", "Of")
 		spells = append(spells, name)
 	})
 
