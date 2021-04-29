@@ -297,7 +297,9 @@ func GetSpells(character_id string) []string {
 		name := spellElement.Text()
 		name = strings.ReplaceAll(name, "\t", "")
 		name = strings.ReplaceAll(name, "\n", "")
-		name = strings.ReplaceAll(name, "of", "Of")
+		// TODO: Move this crap into a separate massager class?
+		name = strings.ReplaceAll(name, " of", " Of")
+		name = strings.ReplaceAll(name, " the", " The")
 		spells = append(spells, name)
 	})
 
