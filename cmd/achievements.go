@@ -13,7 +13,7 @@ var achievementsCmd = &cobra.Command{
 	Use:                   "achievements character_id",
 	Short:                 "Gets collected achievements from Lodestone",
 	Args:                  cobra.ExactArgs(1),
-	Example:               "lodestone achievements 12345",
+	Example:               "lodestone-cli achievements 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]

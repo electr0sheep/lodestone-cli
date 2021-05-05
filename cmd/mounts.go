@@ -13,7 +13,7 @@ var mountsCmd = &cobra.Command{
 	Use:                   "mounts character_id",
 	Short:                 "Gets collected mounts from Lodestone",
 	Args:                  cobra.ExactArgs(1),
-	Example:               "lodestone mounts 12345",
+	Example:               "lodestone-cli mounts 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]

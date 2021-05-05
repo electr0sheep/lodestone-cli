@@ -13,7 +13,7 @@ var orchestrionsCmd = &cobra.Command{
 	Use:                   "orchestrions character_id",
 	Short:                 "Gets collected orchestrions from Lodestone",
 	Args:                  cobra.ExactArgs(1),
-	Example:               "lodestone orchestrions 12345",
+	Example:               "lodestone-cli orchestrions 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]

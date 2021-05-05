@@ -13,7 +13,7 @@ var spellsCmd = &cobra.Command{
 	Use:                   "spells character_id",
 	Short:                 "Gets collected blue mage spells from Lodestone",
 	Args:                  cobra.ExactArgs(1),
-	Example:               "lodestone spells 12345",
+	Example:               "lodestone-cli spells 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]

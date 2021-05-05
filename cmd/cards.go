@@ -9,8 +9,10 @@ import (
 
 // cardsCmd represents the cards command
 var cardsCmd = &cobra.Command{
-	Use:   "cards character_id",
-	Short: "Gets collected triple triad cards from Lodestone",
+	Use:     "cards character_id",
+	Short:   "Gets collected triple triad cards from Lodestone",
+	Args:    cobra.ExactArgs(1),
+	Example: "lodestone-cli cards 12345",
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]
 		cards := lodestoneWrapper.GetCards(character_id)

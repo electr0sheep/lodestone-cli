@@ -13,7 +13,7 @@ var minionsCmd = &cobra.Command{
 	Use:                   "minions character_id",
 	Short:                 "Gets collected minions from Lodestone",
 	Args:                  cobra.ExactArgs(1),
-	Example:               "lodestone minions 12345",
+	Example:               "lodestone-cli minions 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]

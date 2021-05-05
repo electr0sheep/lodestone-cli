@@ -11,6 +11,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Retainer struct {
+	Name  string
+	Id    string
+	Items []Item
+}
+
+type Item struct {
+	Name                 string
+	Quantity             string
+	HighQuality          bool
+	CanBePlacedInArmoire bool
+}
+
 // Gets a session token from Lodestone to read private data
 func getSessionToken() {
 	// Some crap I wrote to see if we could get our own tokens
@@ -304,4 +317,98 @@ func GetSpells(character_id string) []string {
 	})
 
 	return spells
+}
+
+// Gets retainers from Lodestone
+func GetRetainers(character_id string) []Retainer {
+	client := &http.Client{}
+	req := setupRequest("retainer", character_id)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if resp.StatusCode == 404 {
+		cobra.CheckErr("There was an error retrieiving data from Lodestone. Is your session token correct?")
+	}
+
+	if resp.StatusCode == 404 {
+		getSessionToken()
+		req := setupRequest("retainer", character_id)
+		resp, err = client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode == 404 {
+			cobra.CheckErr("There was an error retrieiving data from Lodestone. Is your session token correct?")
+		}
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	retainerElements := doc.Find(".parts__switch__link")
+
+	var retainers []Retainer
+
+	retainerElements.Each(func(_ int, retainerElement *goquery.Selection) {
+		name := retainerElement.Text()
+		id, _ := retainerElement.Attr("href")
+		id = strings.Split(id, "/")[5]
+		// BlueMagicSpell{Name: name, Id: converted_id, Obtained: obtained}
+		retainers = append(retainers, Retainer{Name: name, Id: id, Items: getRetainerItems(character_id, id)})
+	})
+
+	return retainers
+}
+
+// Gets retainer items from Lodestone
+func getRetainerItems(character_id string, retainer_id string) []Item {
+	client := &http.Client{}
+	req := setupRequest(fmt.Sprintf("retainer/%s/baggage", retainer_id), character_id)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if resp.StatusCode == 404 {
+		cobra.CheckErr("There was an error retrieiving data from Lodestone. Is your session token correct?")
+	}
+
+	if resp.StatusCode == 404 {
+		getSessionToken()
+		req := setupRequest(fmt.Sprintf("retainer/%s/baggage", retainer_id), character_id)
+		resp, err = client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode == 404 {
+			cobra.CheckErr("There was an error retrieiving data from Lodestone. Is your session token correct?")
+		}
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	retainerItemElements := doc.Find(".item-list__list")
+
+	var items []Item
+
+	retainerItemElements.Each(func(_ int, retainerItemElement *goquery.Selection) {
+		name := retainerItemElement.Find(".item-list__name").Find(".db-tooltip__item__txt").Find(".db-tooltip__item__name").Text()
+		quantity := retainerItemElement.Find(".item-list__number").Text()
+		highQuality := strings.Contains(name, "")
+		canBePlacedInArmoire := strings.Contains(retainerItemElement.Text(), "Cannot be placed in an armoire.")
+		if highQuality {
+			name = strings.TrimSuffix(name, "")
+		}
+		items = append(items, Item{Name: name, Quantity: quantity, HighQuality: highQuality, CanBePlacedInArmoire: canBePlacedInArmoire})
+	})
+	return items
 }

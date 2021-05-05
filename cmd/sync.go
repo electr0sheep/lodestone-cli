@@ -14,7 +14,7 @@ var syncCmd = &cobra.Command{
 	Use:                   "sync character_id",
 	Short:                 "Syncs private data to ffxivcollect.com",
 	Args:                  cobra.ExactArgs(1),
-	Example:               "lodestone sync 12345",
+	Example:               "lodestone-cli sync 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]

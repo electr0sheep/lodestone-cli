@@ -13,7 +13,7 @@ var allCmd = &cobra.Command{
 	Use:                   "all character_id",
 	Short:                 "Retrieves all collection data from Lodestone",
 	Args:                  cobra.ExactArgs(1),
-	Example:               "lodestone all 12345",
+	Example:               "lodestone-cli all 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := args[0]
