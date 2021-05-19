@@ -269,6 +269,7 @@ func GetOrchestrions(character_id string) []string {
 		// in ffxivcollect are titles (i.e. The Maiden's Lament as opposed to The maiden's lament)
 		name = strings.Title(name)
 		name = strings.ReplaceAll(name, "'S", "'s")
+		name = strings.ReplaceAll(name, "Ul'Dah", "Ul'dah")
 		orchestrions = append(orchestrions, name)
 	})
 
