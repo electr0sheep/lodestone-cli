@@ -30,6 +30,20 @@ type TripleTriadCard struct {
 	Obtained bool
 }
 
+func validateAndUpdateTriadSessionToken(scripts []string) bool {
+	if len(scripts) >= 10 {
+		ffxiv_triple_triad_authenticity_token := scripts[9]
+		viper.Set("ffxiv_triple_triad_authenticity_token", ffxiv_triple_triad_authenticity_token)
+		viper.WriteConfig()
+		return true
+	} else {
+		viper.Set("ffxiv_triple_triad_authenticity_token", "")
+		viper.Set("ffxiv_triple_triad_session_token", "")
+		viper.WriteConfig()
+		return false
+	}
+}
+
 func getSessionToken() {
 	tokenPrompt := promptui.Prompt{
 		Label: "FFXIV Collect Session Token",
@@ -219,10 +233,11 @@ func GetCards() map[string]TripleTriadCard {
 		panic(err)
 	}
 
-	// update authenticity token
-	ffxiv_collect_authenticity_token := strings.Split(doc.Find("script").Text(), "'")[9]
-	viper.Set("ffxiv_triple_triad_authenticity_token", ffxiv_collect_authenticity_token)
-	viper.WriteConfig()
+	// validate and update authenticity token
+	if !validateAndUpdateTriadSessionToken(strings.Split(doc.Find("script").Text(), "'")) {
+		fmt.Println("The triple triad session token appears to be wrong, make sure you have logged in first and try again")
+		return nil
+	}
 
 	cardMap := make(map[string]TripleTriadCard)
 	cardElements := doc.Find(".card-row")

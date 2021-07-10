@@ -92,6 +92,10 @@ func syncCards(character_id string) {
 	cards := lodestoneWrapper.GetCards(character_id)
 	cardMap := ffxivcollectWrapper.GetCards()
 
+	if cardMap == nil {
+		return
+	}
+
 	noCardsAdded := true
 	for _, cardName := range cards {
 		card := cardMap[cardName]
