@@ -137,7 +137,11 @@ func GetCards(character_id string) []string {
 		} else {
 			cardElements.Each(func(_ int, cardElement *goquery.Selection) {
 				name := cardElement.Text()
-				cards = append(cards, name)
+				// there might be a better way to exclude cards that the character
+				// doesn't have, but this will be good enough for now
+				if name != "???" {
+					cards = append(cards, name)
+				}
 			})
 		}
 	}
