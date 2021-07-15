@@ -47,8 +47,7 @@ var declutterCmd = &cobra.Command{
 		retainers := lodestoneWrapper.GetRetainers(character_id)
 		for _, retainer := range retainers {
 			for _, item := range retainer.Items {
-				// don't consider a full stack, these can't be deduped
-				if item.Quantity != "99" {
+				if item.IsStackable() {
 					var name string
 					if item.HighQuality {
 						name = fmt.Sprintf("%s HQ", item.Name)
