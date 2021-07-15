@@ -19,17 +19,16 @@ import (
 	"fmt"
 
 	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-// declutterCmd represents the declutter command
-var declutterCmd = &cobra.Command{
-	Use:     "declutter character_id",
-	Short:   "Finds duplicate items if retainer inventory",
+// jobsCmd represents the jobs command
+var jobsCmd = &cobra.Command{
+	Use:     "jobs",
+	Short:   "Gets name and level of jobs from Lodestone",
 	Args:    cobra.MaximumNArgs(1),
-	Example: "lodestone-cli retainer declutter 12345",
+	Example: "lodestone-cli jobs 12345",
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := ""
 		if len(args) == 0 {
@@ -41,51 +40,25 @@ var declutterCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			character_id = args[0]
 		}
-
 		c := lodestoneWrapper.Character{Id: character_id}
 
-		duplicateItems := false
-		itemMap := make(map[string][]string)
-		retainers := c.GetRetainers()
-		for _, retainer := range retainers {
-			for _, item := range retainer.Items {
-				if item.IsStackable() {
-					var name string
-					if item.HighQuality {
-						name = fmt.Sprintf("%s HQ", item.Name)
-					} else {
-						name = item.Name
-					}
-					itemMap[name] = append(itemMap[name], retainer.Name)
-				}
-			}
-		}
-		for itemName, retainerNames := range itemMap {
-			if len(retainerNames) > 1 {
-				duplicateItems = true
-				fmt.Printf("%s was found in the following retainer inventories:\n", itemName)
-				for _, retainerName := range retainerNames {
-					fmt.Printf("%s\n", retainerName)
-				}
-				fmt.Printf("\n")
-			}
-		}
-		if !duplicateItems {
-			fmt.Printf("No duplicate items found in retainer inventories!")
+		jobs := c.GetJobs()
+		for _, job := range jobs {
+			fmt.Printf("Role: %s, Job: %s, Level: %s, Xp: %s\n", job.Role, job.Name, job.Level, job.Xp)
 		}
 	},
 }
 
 func init() {
-	retainerCmd.AddCommand(declutterCmd)
+	rootCmd.AddCommand(jobsCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// declutterCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// jobsCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// declutterCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// jobsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

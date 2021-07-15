@@ -25,10 +25,13 @@ var cardsCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			character_id = args[0]
 		}
-		cards := lodestoneWrapper.GetCards(character_id)
+
+		c := lodestoneWrapper.Character{Id: character_id}
+
+		cards := c.GetCards()
 		fmt.Printf("You have %d cards:\n", len(cards))
 		for _, card := range cards {
-			fmt.Println(card)
+			fmt.Println(card.Name)
 		}
 	},
 }

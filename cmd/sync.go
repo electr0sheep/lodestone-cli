@@ -55,19 +55,20 @@ func init() {
 }
 
 func syncBlueMagic(character_id string) {
-	spells := lodestoneWrapper.GetSpells(character_id)
+	c := lodestoneWrapper.Character{Id: character_id}
+	spells := c.GetSpells()
 	blueMagicSpellMap := ffxivcollectWrapper.GetBlueMagicSpells()
 
 	noSpellsAdded := true
 	for _, spell := range spells {
-		blueMagicSpell := blueMagicSpellMap[spell]
+		blueMagicSpell := blueMagicSpellMap[spell.Name]
 		if !blueMagicSpell.Obtained {
 			noSpellsAdded = false
-			spellSucessfullyAdded := ffxivcollectWrapper.AddBlueMagicSpell(spell, blueMagicSpell.Id)
+			spellSucessfullyAdded := ffxivcollectWrapper.AddBlueMagicSpell(spell.Name, blueMagicSpell.Id)
 			if spellSucessfullyAdded {
-				fmt.Printf("Checked %s\n", spell)
+				fmt.Printf("Checked %s\n", spell.Name)
 			} else {
-				fmt.Printf("Problem checking %s\n", spell)
+				fmt.Printf("Problem checking %s\n", spell.Name)
 			}
 		}
 	}
@@ -77,11 +78,13 @@ func syncBlueMagic(character_id string) {
 }
 
 func syncOrchestrions(character_id string) {
-	orchestrions := lodestoneWrapper.GetOrchestrions(character_id)
+	c := lodestoneWrapper.Character{Id: character_id}
+	orchestrions := c.GetOrchestrions()
 	orchestrionMap := ffxivcollectWrapper.GetOrchestrions()
 
 	noOrchestrionsAdded := true
-	for _, orchestrionName := range orchestrions {
+	for _, orchestrion := range orchestrions {
+		orchestrionName := orchestrion.Name
 		orchestrion := orchestrionMap[orchestrionName]
 		if !orchestrion.Obtained {
 			noOrchestrionsAdded = false
@@ -99,7 +102,8 @@ func syncOrchestrions(character_id string) {
 }
 
 func syncCards(character_id string) {
-	cards := lodestoneWrapper.GetCards(character_id)
+	c := lodestoneWrapper.Character{Id: character_id}
+	cards := c.GetCards()
 	cardMap := ffxivcollectWrapper.GetCards()
 
 	if cardMap == nil {
@@ -107,7 +111,8 @@ func syncCards(character_id string) {
 	}
 
 	noCardsAdded := true
-	for _, cardName := range cards {
+	for _, card := range cards {
+		cardName := card.Name
 		card := cardMap[cardName]
 		if !card.Obtained {
 			noCardsAdded = false

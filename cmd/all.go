@@ -28,42 +28,44 @@ var allCmd = &cobra.Command{
 			character_id = args[0]
 		}
 
-		mounts := lodestoneWrapper.GetMounts(character_id)
+		c := lodestoneWrapper.Character{Id: character_id}
+
+		mounts := c.GetMounts()
 		fmt.Println("MOUNTS")
 		for _, mount := range mounts {
-			fmt.Println(mount)
+			fmt.Println(mount.Name)
 		}
 
 		fmt.Printf("\n\n\n")
 
-		minions := lodestoneWrapper.GetMinions(character_id)
+		minions := c.GetMinions()
 		fmt.Println("MINIONS")
 		for _, minion := range minions {
-			fmt.Println(minion)
+			fmt.Println(minion.Name)
 		}
 
 		fmt.Printf("\n\n\n")
 
-		orchestrions := lodestoneWrapper.GetOrchestrions(character_id)
+		orchestrions := c.GetOrchestrions()
 		fmt.Println("ORCHESTRIONS")
 		for _, orchestrion := range orchestrions {
-			fmt.Println(orchestrion)
+			fmt.Println(orchestrion.Name)
 		}
 
 		fmt.Printf("\n\n\n")
 
-		spells := lodestoneWrapper.GetSpells(character_id)
+		spells := c.GetSpells()
 		fmt.Println("SPELLS")
 		for _, spell := range spells {
-			fmt.Println(spell)
+			fmt.Println(spell.Name)
 		}
 
 		fmt.Printf("\n\n\n")
 
-		achievements := lodestoneWrapper.GetAchievements(character_id)
+		achievements := c.GetAchievements()
 		fmt.Println("ACHIEVEMENTS")
 		for _, achievement := range achievements {
-			fmt.Println(achievement)
+			fmt.Println(achievement.Name)
 		}
 	},
 }

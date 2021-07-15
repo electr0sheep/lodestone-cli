@@ -27,9 +27,10 @@ var achievementsCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			character_id = args[0]
 		}
-		achievements := lodestoneWrapper.GetAchievements(character_id)
+		c := lodestoneWrapper.Character{Id: character_id}
+		achievements := c.GetAchievements()
 		for _, achievement := range achievements {
-			fmt.Println(achievement)
+			fmt.Println(achievement.Name)
 		}
 	},
 }

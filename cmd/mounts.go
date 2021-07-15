@@ -27,9 +27,12 @@ var mountsCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			character_id = args[0]
 		}
-		mounts := lodestoneWrapper.GetMounts(character_id)
+
+		c := lodestoneWrapper.Character{Id: character_id}
+
+		mounts := c.GetMounts()
 		for _, mount := range mounts {
-			fmt.Println(mount)
+			fmt.Println(mount.Name)
 		}
 	},
 }

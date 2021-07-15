@@ -27,9 +27,12 @@ var orchestrionsCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			character_id = args[0]
 		}
-		orchestrions := lodestoneWrapper.GetOrchestrions(character_id)
+
+		c := lodestoneWrapper.Character{Id: character_id}
+
+		orchestrions := c.GetOrchestrions()
 		for _, orchestrion := range orchestrions {
-			fmt.Println(orchestrion)
+			fmt.Println(orchestrion.Name)
 		}
 	},
 }

@@ -27,9 +27,12 @@ var minionsCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			character_id = args[0]
 		}
-		minions := lodestoneWrapper.GetMinions(character_id)
+
+		c := lodestoneWrapper.Character{Id: character_id}
+
+		minions := c.GetMinions()
 		for _, minion := range minions {
-			fmt.Println(minion)
+			fmt.Println(minion.Name)
 		}
 	},
 }

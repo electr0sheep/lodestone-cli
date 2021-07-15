@@ -27,9 +27,12 @@ var spellsCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			character_id = args[0]
 		}
-		spells := lodestoneWrapper.GetSpells(character_id)
+
+		c := lodestoneWrapper.Character{Id: character_id}
+
+		spells := c.GetSpells()
 		for _, spell := range spells {
-			fmt.Println(spell)
+			fmt.Println(spell.Name)
 		}
 	},
 }
