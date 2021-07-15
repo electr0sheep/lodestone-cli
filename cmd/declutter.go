@@ -21,16 +21,26 @@ import (
 	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // declutterCmd represents the declutter command
 var declutterCmd = &cobra.Command{
 	Use:     "declutter character_id",
 	Short:   "Finds duplicate items if retainer inventory",
-	Args:    cobra.ExactArgs(1),
+	Args:    cobra.MaximumNArgs(1),
 	Example: "lodestone-cli retainer declutter 12345",
 	Run: func(cmd *cobra.Command, args []string) {
-		character_id := args[0]
+		character_id := ""
+		if len(args) == 0 {
+			character_id = viper.GetString("character_id")
+			if character_id == "" {
+				fmt.Println("Character ID not set. Pleaes run set character_id first!")
+				return
+			}
+		} else if len(args) == 1 {
+			character_id = args[0]
+		}
 
 		duplicateItems := false
 		itemMap := make(map[string][]string)

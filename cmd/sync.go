@@ -7,17 +7,27 @@ import (
 	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // syncCmd represents the sync command
 var syncCmd = &cobra.Command{
 	Use:                   "sync character_id",
 	Short:                 "Syncs private data to ffxivcollect.com",
-	Args:                  cobra.ExactArgs(1),
+	Args:                  cobra.MaximumNArgs(1),
 	Example:               "lodestone-cli sync 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		character_id := args[0]
+		character_id := ""
+		if len(args) == 0 {
+			character_id = viper.GetString("character_id")
+			if character_id == "" {
+				fmt.Println("Character ID not set. Pleaes run set character_id first!")
+				return
+			}
+		} else if len(args) == 1 {
+			character_id = args[0]
+		}
 
 		fmt.Printf("Syncing blue magic...\n")
 		syncBlueMagic(character_id)

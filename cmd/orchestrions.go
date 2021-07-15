@@ -6,17 +6,27 @@ import (
 	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // orchestrionsCmd represents the orchestrions command
 var orchestrionsCmd = &cobra.Command{
 	Use:                   "orchestrions character_id",
 	Short:                 "Gets collected orchestrions from Lodestone",
-	Args:                  cobra.ExactArgs(1),
+	Args:                  cobra.MaximumNArgs(1),
 	Example:               "lodestone-cli orchestrions 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		character_id := args[0]
+		character_id := ""
+		if len(args) == 0 {
+			character_id = viper.GetString("character_id")
+			if character_id == "" {
+				fmt.Println("Character ID not set. Pleaes run set character_id first!")
+				return
+			}
+		} else if len(args) == 1 {
+			character_id = args[0]
+		}
 		orchestrions := lodestoneWrapper.GetOrchestrions(character_id)
 		for _, orchestrion := range orchestrions {
 			fmt.Println(orchestrion)

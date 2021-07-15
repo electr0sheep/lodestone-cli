@@ -5,16 +5,26 @@ import (
 
 	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // cardsCmd represents the cards command
 var cardsCmd = &cobra.Command{
 	Use:     "cards character_id",
 	Short:   "Gets collected triple triad cards from Lodestone",
-	Args:    cobra.ExactArgs(1),
+	Args:    cobra.MaximumNArgs(1),
 	Example: "lodestone-cli cards 12345",
 	Run: func(cmd *cobra.Command, args []string) {
-		character_id := args[0]
+		character_id := ""
+		if len(args) == 0 {
+			character_id = viper.GetString("character_id")
+			if character_id == "" {
+				fmt.Println("Character ID not set. Pleaes run set character_id first!")
+				return
+			}
+		} else if len(args) == 1 {
+			character_id = args[0]
+		}
 		cards := lodestoneWrapper.GetCards(character_id)
 		fmt.Printf("You have %d cards:\n", len(cards))
 		for _, card := range cards {
