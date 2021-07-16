@@ -18,7 +18,7 @@ package cmd
 import (
 	"fmt"
 
-	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
+	"github.com/electr0sheep/lodestone-cli/lib"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,7 +40,7 @@ var jobsCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			character_id = args[0]
 		}
-		c := lodestoneWrapper.Character{Id: character_id}
+		c := lib.Character{Id: character_id}
 
 		jobs := c.GetJobs()
 		for _, job := range jobs {

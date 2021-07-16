@@ -1,4 +1,4 @@
-package ffxivcollectWrapper
+package ffxivcollect
 
 import (
 	"fmt"

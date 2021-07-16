@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	ffxivcollectWrapper "github.com/electr0sheep/lodestone-cli/ffxivcollect"
-	lodestoneWrapper "github.com/electr0sheep/lodestone-cli/lodestone"
+	"github.com/electr0sheep/lodestone-cli/lib"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -55,7 +55,7 @@ func init() {
 }
 
 func syncBlueMagic(character_id string) {
-	c := lodestoneWrapper.Character{Id: character_id}
+	c := lib.Character{Id: character_id}
 	spells := c.GetSpells()
 	blueMagicSpellMap := ffxivcollectWrapper.GetBlueMagicSpells()
 
@@ -78,7 +78,7 @@ func syncBlueMagic(character_id string) {
 }
 
 func syncOrchestrions(character_id string) {
-	c := lodestoneWrapper.Character{Id: character_id}
+	c := lib.Character{Id: character_id}
 	orchestrions := c.GetOrchestrions()
 	orchestrionMap := ffxivcollectWrapper.GetOrchestrions()
 
@@ -102,7 +102,7 @@ func syncOrchestrions(character_id string) {
 }
 
 func syncCards(character_id string) {
-	c := lodestoneWrapper.Character{Id: character_id}
+	c := lib.Character{Id: character_id}
 	cards := c.GetCards()
 	cardMap := ffxivcollectWrapper.GetCards()
 
