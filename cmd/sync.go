@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	ffxivcollectWrapper "github.com/electr0sheep/lodestone-cli/ffxivcollect"
+	"github.com/electr0sheep/lodestone-cli/ffxivcollect"
 	"github.com/electr0sheep/lodestone-cli/lib"
 
 	"github.com/spf13/cobra"
@@ -57,14 +57,14 @@ func init() {
 func syncBlueMagic(character_id string) {
 	c := lib.Character{Id: character_id}
 	spells := c.GetSpells()
-	blueMagicSpellMap := ffxivcollectWrapper.GetBlueMagicSpells()
+	blueMagicSpellMap := ffxivcollect.GetBlueMagicSpells()
 
 	noSpellsAdded := true
 	for _, spell := range spells {
 		blueMagicSpell := blueMagicSpellMap[spell.Name]
 		if !blueMagicSpell.Obtained {
 			noSpellsAdded = false
-			spellSucessfullyAdded := ffxivcollectWrapper.AddBlueMagicSpell(spell.Name, blueMagicSpell.Id)
+			spellSucessfullyAdded := ffxivcollect.AddBlueMagicSpell(spell.Name, blueMagicSpell.Id)
 			if spellSucessfullyAdded {
 				fmt.Printf("Checked %s\n", spell.Name)
 			} else {
@@ -80,7 +80,7 @@ func syncBlueMagic(character_id string) {
 func syncOrchestrions(character_id string) {
 	c := lib.Character{Id: character_id}
 	orchestrions := c.GetOrchestrions()
-	orchestrionMap := ffxivcollectWrapper.GetOrchestrions()
+	orchestrionMap := ffxivcollect.GetOrchestrions()
 
 	noOrchestrionsAdded := true
 	for _, orchestrion := range orchestrions {
@@ -88,7 +88,7 @@ func syncOrchestrions(character_id string) {
 		orchestrion := orchestrionMap[orchestrionName]
 		if !orchestrion.Obtained {
 			noOrchestrionsAdded = false
-			orchestrionSucessfullyAdded := ffxivcollectWrapper.AddOrchestrion(orchestrionName, orchestrion.Id)
+			orchestrionSucessfullyAdded := ffxivcollect.AddOrchestrion(orchestrionName, orchestrion.Id)
 			if orchestrionSucessfullyAdded {
 				fmt.Printf("Checked %s\n", orchestrionName)
 			} else {
@@ -104,7 +104,7 @@ func syncOrchestrions(character_id string) {
 func syncCards(character_id string) {
 	c := lib.Character{Id: character_id}
 	cards := c.GetCards()
-	cardMap := ffxivcollectWrapper.GetCards()
+	cardMap := ffxivcollect.GetCards()
 
 	if cardMap == nil {
 		return
@@ -116,7 +116,7 @@ func syncCards(character_id string) {
 		card := cardMap[cardName]
 		if !card.Obtained {
 			noCardsAdded = false
-			cardSucessfullyAdded := ffxivcollectWrapper.AddCard(cardName, card.Id)
+			cardSucessfullyAdded := ffxivcollect.AddCard(cardName, card.Id)
 			if cardSucessfullyAdded {
 				fmt.Printf("Checked %s\n", cardName)
 			} else {
