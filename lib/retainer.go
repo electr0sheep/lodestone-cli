@@ -58,9 +58,39 @@ func (r *Retainer) GetItems() {
 		canBePlacedInArmoire := strings.Contains(retainerItemElement.Text(), "Cannot be placed in an armoire.")
 		isUnique := retainerItemElement.Find(".rare").Nodes != nil
 		itemCategory := retainerItemElement.Find(".db-tooltip__item__category").First().Text()
+		itemInfo := retainerItemElement.Find(".db-tooltip__item-info__list")
+		itemInfo.Each(func(_ int, item *goquery.Selection) {
+
+		})
+		gearInfo := retainerItemElement.Find(".db-tooltip__item-info__list")
+		extractable := false
+		projectable := false
+		desynthesizable := ""
+		dyable := false
+		if gearInfo.Nodes != nil {
+			extractable = gearInfo.Nodes[0].FirstChild.LastChild.FirstChild.Data == "Yes"
+			projectable = gearInfo.Nodes[0].FirstChild.NextSibling.LastChild.FirstChild.Data == "Yes"
+			desynthesizable = gearInfo.Nodes[0].FirstChild.NextSibling.NextSibling.LastChild.FirstChild.Data
+			dyable = gearInfo.Nodes[0].FirstChild.NextSibling.NextSibling.NextSibling.LastChild.FirstChild.Data == "Yes"
+		}
+		// can leave the && out if you want to know if it's purchasable with any currency
+		// however, for decluttering I just wanna know if I can buy it with gil
+		purchasable := retainerItemElement.Find(".db-view__sells").Nodes[0].NextSibling.FirstChild != nil && strings.Contains(retainerItemElement.Find(".db-view__sells").Nodes[0].NextSibling.FirstChild.Data, "gil")
 		if highQuality {
 			name = strings.TrimSuffix(name, "")
 		}
-		r.Items = append(r.Items, Item{Name: name, Quantity: quantity, HighQuality: highQuality, CanBePlacedInArmoire: canBePlacedInArmoire, IsUnique: isUnique, ItemCategory: itemCategory})
+
+		r.Items = append(r.Items, Item{
+			Name:                 name,
+			Quantity:             quantity,
+			HighQuality:          highQuality,
+			CanBePlacedInArmoire: canBePlacedInArmoire,
+			IsUnique:             isUnique,
+			ItemCategory:         itemCategory,
+			Extractable:          extractable,
+			Projectable:          projectable,
+			Desynthesizable:      desynthesizable,
+			Dyable:               dyable,
+			Purchasable:          purchasable})
 	})
 }

@@ -24,7 +24,7 @@ type Character struct {
 	Spells       []Spell
 }
 
-func (c Character) GetAchievements() []Achievement {
+func (c *Character) GetAchievements() {
 	client := &http.Client{}
 	morePages := true
 	var achievements []Achievement
@@ -62,7 +62,7 @@ func (c Character) GetAchievements() []Achievement {
 		}
 	}
 
-	return achievements
+	c.Achievements = achievements
 }
 
 func (c Character) GetCards() []Card {

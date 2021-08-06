@@ -59,6 +59,9 @@ var declutterCmd = &cobra.Command{
 				}
 			}
 		}
+		fmt.Println("==================================================")
+		fmt.Println("            UNSTACKED RETAINER ITEMS")
+		fmt.Println("==================================================")
 		for itemName, retainerNames := range itemMap {
 			if len(retainerNames) > 1 {
 				duplicateItems = true
@@ -71,6 +74,23 @@ var declutterCmd = &cobra.Command{
 		}
 		if !duplicateItems {
 			fmt.Printf("No duplicate items found in retainer inventories!")
+		}
+		fmt.Println("")
+		fmt.Println("==================================================")
+		fmt.Println("              PURCHASABLE ITEMS")
+		fmt.Println("==================================================")
+		for _, retainer := range retainers {
+			for _, item := range retainer.Items {
+				if item.Purchasable {
+					var name string
+					if item.HighQuality {
+						name = fmt.Sprintf("%s HQ", item.Name)
+					} else {
+						name = item.Name
+					}
+					fmt.Printf("%s was found in the inventory of %s and is purchasable with gil\n", name, retainer.Name)
+				}
+			}
 		}
 	},
 }

@@ -27,8 +27,8 @@ var achievementsCmd = &cobra.Command{
 			character_id = args[0]
 		}
 		c := lib.Character{Id: character_id}
-		achievements := c.GetAchievements()
-		for _, achievement := range achievements {
+		c.GetAchievements()
+		for _, achievement := range c.Achievements {
 			fmt.Println(achievement.Name)
 		}
 	},

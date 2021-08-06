@@ -61,9 +61,9 @@ var allCmd = &cobra.Command{
 
 		fmt.Printf("\n\n\n")
 
-		achievements := c.GetAchievements()
+		c.GetAchievements()
 		fmt.Println("ACHIEVEMENTS")
-		for _, achievement := range achievements {
+		for _, achievement := range c.Achievements {
 			fmt.Println(achievement.Name)
 		}
 	},

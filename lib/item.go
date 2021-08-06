@@ -9,6 +9,11 @@ type Item struct {
 	CanBePlacedInArmoire bool
 	IsUnique             bool
 	ItemCategory         string
+	Extractable          bool
+	Projectable          bool
+	Desynthesizable      string
+	Dyable               bool
+	Purchasable          bool
 }
 
 func (i Item) IsStackable() bool {
