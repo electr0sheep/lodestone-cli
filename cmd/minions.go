@@ -29,8 +29,8 @@ var minionsCmd = &cobra.Command{
 
 		c := lib.Character{Id: character_id}
 
-		minions := c.GetMinions()
-		for _, minion := range minions {
+		c.GetMinions()
+		for _, minion := range c.Minions {
 			fmt.Println(minion.Name)
 		}
 	},

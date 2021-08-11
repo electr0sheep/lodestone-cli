@@ -29,33 +29,33 @@ var allCmd = &cobra.Command{
 
 		c := lib.Character{Id: character_id}
 
-		mounts := c.GetMounts()
+		c.GetMounts()
 		fmt.Println("MOUNTS")
-		for _, mount := range mounts {
+		for _, mount := range c.Mounts {
 			fmt.Println(mount.Name)
 		}
 
 		fmt.Printf("\n\n\n")
 
-		minions := c.GetMinions()
+		c.GetMinions()
 		fmt.Println("MINIONS")
-		for _, minion := range minions {
+		for _, minion := range c.Minions {
 			fmt.Println(minion.Name)
 		}
 
 		fmt.Printf("\n\n\n")
 
-		orchestrions := c.GetOrchestrions()
+		c.GetOrchestrions()
 		fmt.Println("ORCHESTRIONS")
-		for _, orchestrion := range orchestrions {
+		for _, orchestrion := range c.Orchestrions {
 			fmt.Println(orchestrion.Name)
 		}
 
 		fmt.Printf("\n\n\n")
 
-		spells := c.GetSpells()
+		c.GetSpells()
 		fmt.Println("SPELLS")
-		for _, spell := range spells {
+		for _, spell := range c.Spells {
 			fmt.Println(spell.Name)
 		}
 

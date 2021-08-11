@@ -12,16 +12,59 @@ import (
 )
 
 type Character struct {
-	Name         string
-	Id           string
-	Achievements []Achievement
-	Cards        []Card
-	Jobs         []Job
-	Minions      []Minion
-	Mounts       []Mount
-	Orchestrions []Orchestrion
-	Retainers    []Retainer
-	Spells       []Spell
+	CityState        string
+	Clan             string
+	FreeCompany      string
+	Gender           string
+	GrandCompany     string
+	GrandCompanyRank string
+	Guardian         string
+	Id               string
+	Name             string
+	Nameday          string
+	Race             string
+	Title            string
+	World            string
+	Linkshells       []string
+	Achievements     []Achievement
+	Cards            []Card
+	Jobs             []Job
+	Minions          []Minion
+	Mounts           []Mount
+	Orchestrions     []Orchestrion
+	Retainers        []*Retainer
+	Spells           []Spell
+}
+
+func (c *Character) GetProfile() {
+	client := &http.Client{}
+	req := lodestone.SetupRequest("", c.Id)
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	c.Name = doc.Find(".frame__chara__name").Text()
+	c.Title = doc.Find(".frame__chara__title").Text()
+	c.World = strings.ReplaceAll(doc.Find(".frame__chara__world").Text(), "\u00a0", " ")
+	c.Race = doc.Find(".character-block__name").Nodes[0].FirstChild.Data
+	c.Clan = strings.Split(doc.Find(".character-block__name").Nodes[0].FirstChild.NextSibling.NextSibling.Data, " / ")[0]
+	c.Gender = strings.Split(doc.Find(".character-block__name").Nodes[0].FirstChild.NextSibling.NextSibling.Data, " / ")[1]
+	c.Nameday = doc.Find(".character-block__birth").Text()
+	c.Guardian = doc.Find(".character-block__name").Nodes[1].FirstChild.Data
+	c.CityState = doc.Find(".character-block__name").Nodes[2].FirstChild.Data
+	c.GrandCompany = strings.Split(doc.Find(".character-block__name").Nodes[3].FirstChild.Data, " / ")[0]
+	c.GrandCompanyRank = strings.Split(doc.Find(".character-block__name").Nodes[3].FirstChild.Data, " / ")[1]
+	c.FreeCompany = doc.Find(".character__freecompany__name a").Text()
+	linkshellElements := doc.Find(".character__linkshell__name li")
+	linkshellElements.Each(func(_ int, linkshellElement *goquery.Selection) {
+		name := linkshellElement.Text()
+		c.Linkshells = append(c.Linkshells, name)
+	})
 }
 
 func (c *Character) GetAchievements() {
@@ -65,7 +108,7 @@ func (c *Character) GetAchievements() {
 	c.Achievements = achievements
 }
 
-func (c Character) GetCards() []Card {
+func (c *Character) GetCards() {
 	client := &http.Client{}
 	morePages := true
 	var cards []Card
@@ -106,10 +149,10 @@ func (c Character) GetCards() []Card {
 		}
 	}
 
-	return cards
+	c.Cards = cards
 }
 
-func (c Character) GetJobs() []Job {
+func (c *Character) GetJobs() {
 	client := &http.Client{}
 	var jobs []Job
 
@@ -139,10 +182,10 @@ func (c Character) GetJobs() []Job {
 		})
 	})
 
-	return jobs
+	c.Jobs = jobs
 }
 
-func (c Character) GetMinions() []Minion {
+func (c *Character) GetMinions() {
 	client := &http.Client{}
 	var minions []Minion
 
@@ -165,10 +208,10 @@ func (c Character) GetMinions() []Minion {
 		minions = append(minions, Minion{Name: name})
 	})
 
-	return minions
+	c.Minions = minions
 }
 
-func (c Character) GetMounts() []Mount {
+func (c *Character) GetMounts() {
 	client := &http.Client{}
 	req := lodestone.SetupMobileRequest("mount", c.Id)
 	var mounts []Mount
@@ -190,10 +233,10 @@ func (c Character) GetMounts() []Mount {
 		mounts = append(mounts, Mount{Name: name})
 	})
 
-	return mounts
+	c.Mounts = mounts
 }
 
-func (c Character) GetOrchestrions() []Orchestrion {
+func (c *Character) GetOrchestrions() {
 	client := &http.Client{}
 	req := lodestone.SetupMobileRequest("orchestrion", c.Id)
 	var orchestrions []Orchestrion
@@ -222,10 +265,10 @@ func (c Character) GetOrchestrions() []Orchestrion {
 		orchestrions = append(orchestrions, Orchestrion{Name: name})
 	})
 
-	return orchestrions
+	c.Orchestrions = orchestrions
 }
 
-func (c Character) GetRetainers() []*Retainer {
+func (c *Character) GetRetainers() {
 	client := &http.Client{}
 	req := lodestone.SetupRequest("retainer", c.Id)
 
@@ -270,10 +313,10 @@ func (c Character) GetRetainers() []*Retainer {
 		retainer.GetItems()
 	}
 
-	return retainers
+	c.Retainers = retainers
 }
 
-func (c Character) GetSpells() []Spell {
+func (c *Character) GetSpells() {
 	client := &http.Client{}
 	req := lodestone.SetupMobileRequest("bluemage", c.Id)
 	var spells []Spell
@@ -300,17 +343,43 @@ func (c Character) GetSpells() []Spell {
 	if err != nil {
 		panic(err)
 	}
-	spellElements := doc.Find(".sys-reward").Find(".bluemage-action__name")
+	spellElements := doc.Find(".sys-reward")
 
 	spellElements.Each(func(_ int, spellElement *goquery.Selection) {
-		name := spellElement.Text()
+		name := spellElement.Find(".bluemage-action__name").Text()
 		name = strings.ReplaceAll(name, "\t", "")
 		name = strings.ReplaceAll(name, "\n", "")
 		// TODO: Move this crap into a separate massager class?
 		name = strings.ReplaceAll(name, " of", " Of")
 		name = strings.ReplaceAll(name, " the", " The")
-		spells = append(spells, Spell{Name: name})
+		detail := spellElement.Find(".bluemage-detail__action__type").Text()
+		spellType := strings.Split(strings.Split(detail, "\n")[1], ": ")[1]
+		aspect := strings.Split(strings.Split(detail, "\n")[2], ": ")[1]
+		rank := strings.Split(strings.Split(detail, "\n")[3], ": ")[1]
+		description := strings.TrimSpace(spellElement.Find(".bluemage-detail__text").Text())
+		description = strings.ReplaceAll(description, "\n", "")
+		descriptionWords := strings.Split(description, " ")
+		var descriptionLine string
+		var formattedDescription []string
+		for _, word := range descriptionWords {
+			if len(descriptionLine)+len(word)+1 > 80 {
+				formattedDescription = append(formattedDescription, strings.TrimSpace(descriptionLine))
+				descriptionLine = word
+			} else {
+				descriptionLine += " " + word
+			}
+		}
+		// for i := 0; i < len(description); i += 80 {
+		// 	if i+80 > len(description) {
+		// 		formattedDescription = append(formattedDescription, description[i:])
+		// 	} else {
+		// 		formattedDescription = append(formattedDescription, description[i:i+80])
+		// 	}
+		// }
+		description = strings.Join(formattedDescription, "\n")
+		hint := strings.TrimSpace(spellElement.Find(".bluemage-detail__hint__text").Text())
+		spells = append(spells, Spell{Name: name, Type: spellType, Aspect: aspect, Rank: rank, Description: description, WhereToLearn: hint})
 	})
 
-	return spells
+	c.Spells = spells
 }

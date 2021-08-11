@@ -29,8 +29,8 @@ var orchestrionsCmd = &cobra.Command{
 
 		c := lib.Character{Id: character_id}
 
-		orchestrions := c.GetOrchestrions()
-		for _, orchestrion := range orchestrions {
+		c.GetOrchestrions()
+		for _, orchestrion := range c.Orchestrions {
 			fmt.Println(orchestrion.Name)
 		}
 	},

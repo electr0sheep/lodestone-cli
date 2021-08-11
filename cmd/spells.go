@@ -29,8 +29,8 @@ var spellsCmd = &cobra.Command{
 
 		c := lib.Character{Id: character_id}
 
-		spells := c.GetSpells()
-		for _, spell := range spells {
+		c.GetSpells()
+		for _, spell := range c.Spells {
 			fmt.Println(spell.Name)
 		}
 	},

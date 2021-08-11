@@ -29,8 +29,8 @@ var mountsCmd = &cobra.Command{
 
 		c := lib.Character{Id: character_id}
 
-		mounts := c.GetMounts()
-		for _, mount := range mounts {
+		c.GetMounts()
+		for _, mount := range c.Mounts {
 			fmt.Println(mount.Name)
 		}
 	},

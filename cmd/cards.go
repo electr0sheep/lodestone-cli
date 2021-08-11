@@ -28,9 +28,9 @@ var cardsCmd = &cobra.Command{
 
 		c := lib.Character{Id: character_id}
 
-		cards := c.GetCards()
-		fmt.Printf("You have %d cards:\n", len(cards))
-		for _, card := range cards {
+		c.GetCards()
+		fmt.Printf("You have %d cards:\n", len(c.Cards))
+		for _, card := range c.Cards {
 			fmt.Println(card.Name)
 		}
 	},

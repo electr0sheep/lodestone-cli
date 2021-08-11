@@ -30,8 +30,8 @@ var declutterCmd = &cobra.Command{
 
 		duplicateItems := false
 		itemMap := make(map[string][]string)
-		retainers := c.GetRetainers()
-		for _, retainer := range retainers {
+		c.GetRetainers()
+		for _, retainer := range c.Retainers {
 			for _, item := range retainer.Items {
 				if item.IsStackable() {
 					var name string
@@ -64,7 +64,7 @@ var declutterCmd = &cobra.Command{
 		fmt.Println("==================================================")
 		fmt.Println("              PURCHASABLE ITEMS")
 		fmt.Println("==================================================")
-		for _, retainer := range retainers {
+		for _, retainer := range c.Retainers {
 			for _, item := range retainer.Items {
 				if item.Purchasable {
 					var name string

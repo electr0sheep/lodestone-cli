@@ -27,8 +27,8 @@ var jobsCmd = &cobra.Command{
 		}
 		c := lib.Character{Id: character_id}
 
-		jobs := c.GetJobs()
-		for _, job := range jobs {
+		c.GetJobs()
+		for _, job := range c.Jobs {
 			fmt.Printf("Role: %s, Job: %s, Level: %s, Xp: %s\n", job.Role, job.Name, job.Level, job.Xp)
 		}
 	},

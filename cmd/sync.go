@@ -56,11 +56,11 @@ func init() {
 
 func syncBlueMagic(character_id string) {
 	c := lib.Character{Id: character_id}
-	spells := c.GetSpells()
+	c.GetSpells()
 	blueMagicSpellMap := ffxivcollect.GetBlueMagicSpells()
 
 	noSpellsAdded := true
-	for _, spell := range spells {
+	for _, spell := range c.Spells {
 		blueMagicSpell := blueMagicSpellMap[spell.Name]
 		if !blueMagicSpell.Obtained {
 			noSpellsAdded = false
@@ -79,11 +79,11 @@ func syncBlueMagic(character_id string) {
 
 func syncOrchestrions(character_id string) {
 	c := lib.Character{Id: character_id}
-	orchestrions := c.GetOrchestrions()
+	c.GetOrchestrions()
 	orchestrionMap := ffxivcollect.GetOrchestrions()
 
 	noOrchestrionsAdded := true
-	for _, orchestrion := range orchestrions {
+	for _, orchestrion := range c.Orchestrions {
 		orchestrionName := orchestrion.Name
 		orchestrion := orchestrionMap[orchestrionName]
 		if !orchestrion.Obtained {
@@ -103,7 +103,7 @@ func syncOrchestrions(character_id string) {
 
 func syncCards(character_id string) {
 	c := lib.Character{Id: character_id}
-	cards := c.GetCards()
+	c.GetCards()
 	cardMap := ffxivcollect.GetCards()
 
 	if cardMap == nil {
@@ -111,7 +111,7 @@ func syncCards(character_id string) {
 	}
 
 	noCardsAdded := true
-	for _, card := range cards {
+	for _, card := range c.Cards {
 		cardName := card.Name
 		card := cardMap[cardName]
 		if !card.Obtained {
