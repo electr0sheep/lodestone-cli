@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/electr0sheep/lodestone-cli/lib"
 	"github.com/manifoldco/promptui"
@@ -178,20 +179,20 @@ func profileMenu(c lib.Character) {
 	}
 
 	characterAttributes := []attribute{
-		{Name: "Title", Value: c.Title},
-		{Name: "World", Value: c.World},
-		{Name: "Race", Value: c.Race},
-		{Name: "Clan", Value: c.Clan},
-		{Name: "Gender", Value: c.Gender},
-		{Name: "Nameday", Value: c.Nameday},
-		{Name: "Guardian", Value: c.Guardian},
-		{Name: "City-state", Value: c.CityState},
+		{Name: "Title        ", Value: c.Title},
+		{Name: "World        ", Value: c.World},
+		{Name: "Race         ", Value: c.Race},
+		{Name: "Clan         ", Value: c.Clan},
+		{Name: "Gender       ", Value: c.Gender},
+		{Name: "Nameday      ", Value: c.Nameday},
+		{Name: "Guardian     ", Value: c.Guardian},
+		{Name: "City-state   ", Value: c.CityState},
 		{Name: "Grand Company", Value: c.GrandCompany},
-		{Name: "Free Company", Value: c.FreeCompany},
+		{Name: "Free Company ", Value: c.FreeCompany},
 	}
 
 	for _, linkshell := range c.Linkshells {
-		characterAttributes = append(characterAttributes, attribute{Name: "Linkshell", Value: linkshell})
+		characterAttributes = append(characterAttributes, attribute{Name: "Linkshell    ", Value: linkshell})
 	}
 
 	templates := &promptui.SelectTemplates{
@@ -219,11 +220,108 @@ func profileMenu(c lib.Character) {
 }
 
 func jobMenu(c lib.Character) {
+	if c.Jobs == nil {
+		c.GetJobs()
+	}
 
+	templates := &promptui.SelectTemplates{
+		Label:    "Class/Job",
+		Active:   "\U000025B8 {{ .Name | cyan }}",
+		Inactive: "  {{ .Name | cyan }}",
+		Selected: "\U000025B8 {{ .Name | red | cyan }}",
+		Details: `
+Level: {{ .Level }}
+Role: {{ .Role }}
+Xp: {{ .Xp }}`,
+	}
+
+	prompt := promptui.Select{
+		Items:        c.Jobs,
+		Templates:    templates,
+		Size:         10,
+		HideSelected: true,
+	}
+
+	_, _, err := prompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	characterMenu(c)
 }
 
 func minionMenu(c lib.Character) {
+	if c.Minions == nil {
+		c.GetMinions()
+	}
 
+	templates := &promptui.SelectTemplates{
+		Label:    "Minions",
+		Active:   "\U000025B8 {{ .Name | cyan }}",
+		Inactive: "  {{ .Name | cyan }}",
+		Selected: "\U000025B8 {{ .Name | red | cyan }}",
+	}
+
+	prompt := promptui.Select{
+		Items:        c.Minions,
+		Templates:    templates,
+		Size:         10,
+		HideSelected: true,
+	}
+
+	i, _, err := prompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	if c.Minions[i].Description == "" {
+		c.GetMinionDetails(&c.Minions[i])
+		// also need to format description for use here
+		c.Minions[i].Description = formatForTerminal(c.Minions[i].Description)
+	}
+
+	minionDetailMenu(c, c.Minions[i])
+}
+
+func minionDetailMenu(c lib.Character, m lib.Minion) {
+	type attribute struct {
+		Name  string
+		Value string
+	}
+
+	minionAttributes := []attribute{
+		{Name: "Behavior        ", Value: m.Behavior},
+		{Name: "Acquisition Date", Value: m.AcquistionDate},
+		{Name: "Description     ", Value: ""},
+	}
+
+	templates := &promptui.SelectTemplates{
+		Label:    m.Name,
+		Active:   "\U000025B8 {{ .Name | cyan }}: {{ .Value }}",
+		Inactive: "  {{ .Name | cyan }}: {{ .Value }}",
+		Selected: "\U000025B8 {{ .Name | red | cyan }}: {{ .Value }}",
+		Details:  m.Description,
+	}
+
+	prompt := promptui.Select{
+		Items:        minionAttributes,
+		Templates:    templates,
+		Size:         10,
+		HideSelected: true,
+	}
+
+	_, _, err := prompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	characterMenu(c)
 }
 
 func mountMenu(c lib.Character) {
@@ -253,6 +351,10 @@ func pvpMenu(c lib.Character) {
 func blueMagicMenu(c lib.Character) {
 	if c.Spells == nil {
 		c.GetSpells()
+		// also need to format description for use here
+		for i, spell := range c.Spells {
+			c.Spells[i].Description = formatForTerminal(spell.Description)
+		}
 	}
 
 	templates := &promptui.SelectTemplates{
@@ -282,7 +384,7 @@ How to learn: {{ .WhereToLearn }}`,
 		return
 	}
 
-	mainMenu(c)
+	characterMenu(c)
 }
 
 func trustMenu(c lib.Character) {
@@ -295,4 +397,19 @@ func goldSaucerMenu(c lib.Character) {
 
 func tripleTriadMenu(c lib.Character) {
 
+}
+
+func formatForTerminal(s string) string {
+	stringWords := strings.Split(s, " ")
+	var stringLine string
+	var formattedString []string
+	for _, word := range stringWords {
+		if len(stringLine)+len(word)+1 > 80 {
+			formattedString = append(formattedString, strings.TrimSpace(stringLine))
+			stringLine = word
+		} else {
+			stringLine += " " + word
+		}
+	}
+	return strings.Join(formattedString, "\n")
 }

@@ -1,5 +1,9 @@
 package lib
 
 type Minion struct {
-	Name string
+	AcquistionDate string
+	Behavior       string
+	Description    string
+	Id             string
+	Name           string
 }

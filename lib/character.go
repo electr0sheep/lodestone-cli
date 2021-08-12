@@ -3,7 +3,9 @@ package lib
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/electr0sheep/lodestone-cli/lodestone"
 
@@ -168,12 +170,11 @@ func (c *Character) GetJobs() {
 	if err != nil {
 		panic(err)
 	}
-	roleElements := doc.Find(".character__job__role")
+	roleElements := doc.Find(".character__job__role .heading--lead")
 
 	roleElements.Each(func(_ int, roleElement *goquery.Selection) {
-		role := roleElement.Find(".heading--lead").Nodes[0].LastChild.Data
-		jobElements := roleElement.Find(".character__job li")
-
+		role := roleElement.Text()
+		jobElements := roleElement.Next().Find(".character__job li")
 		jobElements.Each(func(_ int, jobElement *goquery.Selection) {
 			name := jobElement.Find(".character__job__name").Text()
 			level := jobElement.Find(".character__job__level").Text()
@@ -183,6 +184,33 @@ func (c *Character) GetJobs() {
 	})
 
 	c.Jobs = jobs
+}
+
+// getting all minion data at once causes issues
+// this allows to lazy load
+func (c *Character) GetMinionDetails(m *Minion) {
+	client := &http.Client{}
+	req := lodestone.SetupRequest(fmt.Sprintf("minion/tooltip/%s", m.Id), c.Id)
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	m.AcquistionDate = doc.Find(".minion__header__data").Text()
+	if strings.Contains(m.AcquistionDate, "ldst_strftime(") {
+		// need to convert epoch to date
+		epoch := strings.Split(m.AcquistionDate, "ldst_strftime(")[1]
+		epoch = strings.Split(epoch, ",")[0]
+		timestamp, _ := strconv.ParseInt(epoch, 10, 64)
+		myDate := time.Unix(timestamp, 0)
+		m.AcquistionDate = fmt.Sprintf("%d/%d/%d", myDate.Month(), myDate.Day(), myDate.Year())
+	}
+	m.Behavior = doc.Find(".minion__type span").Text()
+	m.Description = doc.Find(".minion__text").Text()
 }
 
 func (c *Character) GetMinions() {
@@ -201,11 +229,13 @@ func (c *Character) GetMinions() {
 	if err != nil {
 		panic(err)
 	}
-	minionElements := doc.Find(".minion__name")
+	minionElements := doc.Find(".minion__list__item")
 
 	minionElements.Each(func(_ int, minionElement *goquery.Selection) {
-		name := minionElement.Text()
-		minions = append(minions, Minion{Name: name})
+		tooltipHref, _ := minionElement.Attr("data-tooltip_href")
+		id := strings.Split(tooltipHref, "/")[6]
+		name := minionElement.Find(".minion__name").Text()
+		minions = append(minions, Minion{Id: id, Name: name})
 	})
 
 	c.Minions = minions
@@ -358,25 +388,6 @@ func (c *Character) GetSpells() {
 		rank := strings.Split(strings.Split(detail, "\n")[3], ": ")[1]
 		description := strings.TrimSpace(spellElement.Find(".bluemage-detail__text").Text())
 		description = strings.ReplaceAll(description, "\n", "")
-		descriptionWords := strings.Split(description, " ")
-		var descriptionLine string
-		var formattedDescription []string
-		for _, word := range descriptionWords {
-			if len(descriptionLine)+len(word)+1 > 80 {
-				formattedDescription = append(formattedDescription, strings.TrimSpace(descriptionLine))
-				descriptionLine = word
-			} else {
-				descriptionLine += " " + word
-			}
-		}
-		// for i := 0; i < len(description); i += 80 {
-		// 	if i+80 > len(description) {
-		// 		formattedDescription = append(formattedDescription, description[i:])
-		// 	} else {
-		// 		formattedDescription = append(formattedDescription, description[i:i+80])
-		// 	}
-		// }
-		description = strings.Join(formattedDescription, "\n")
 		hint := strings.TrimSpace(spellElement.Find(".bluemage-detail__hint__text").Text())
 		spells = append(spells, Spell{Name: name, Type: spellType, Aspect: aspect, Rank: rank, Description: description, WhereToLearn: hint})
 	})
