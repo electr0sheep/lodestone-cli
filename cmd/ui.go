@@ -1,18 +1,3 @@
-/*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
@@ -87,15 +72,6 @@ func init() {
 	// uiCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-// func nextView(g *gocui.Gui, v *gocui.View) error {
-// 	if v == nil || v.Name() == "side" {
-// 		_, err := g.SetCurrentView("main")
-// 		return err
-// 	}
-// 	_, err := g.SetCurrentView("side")
-// 	return err
-// }
-
 func cursorDown(g *gocui.Gui, v *gocui.View) error {
 	menuLength := 0
 	switch g.CurrentView().Name() {
@@ -167,7 +143,6 @@ func processMainMenuSelection(g *gocui.Gui, selection string) {
 	switch selection {
 	case "Character":
 		makeCharacterMenuLayout(g)
-		// showMessage(g, selection)
 	case "Companions":
 		showMessage(g, selection)
 	case "Retainers":
@@ -217,26 +192,6 @@ func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
 		selectedOption := CHARACTER_MENU_OPTIONS[cy]
 		processCharacterMenuSelection(g, selectedOption)
 	}
-	// showMessage(g, selectedOption)
-	// showMessage(g, "TEST\nTEST1234\nTEST\nTEST")
-	// var l string
-	// var err error
-
-	// _, cy := v.Cursor()
-	// if l, err = v.Line(cy); err != nil {
-	// 	l = ""
-	// }
-
-	// maxX, maxY := g.Size()
-	// if v, err := g.SetView("msg", maxX/2-30, maxY/2, maxX/2+30, maxY/2+2); err != nil {
-	// 	if err != gocui.ErrUnknownView {
-	// 		return err
-	// 	}
-	// 	fmt.Fprintln(v, l)
-	// 	if _, err := g.SetCurrentView("msg"); err != nil {
-	// 		return err
-	// 	}
-	// }
 	return nil
 }
 
@@ -255,12 +210,6 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 }
 
 func keybindings(g *gocui.Gui) error {
-	// if err := g.SetKeybinding("side", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
-	// 	return err
-	// }
-	// if err := g.SetKeybinding("main", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
-	// 	return err
-	// }
 	if err := g.SetKeybinding("main", gocui.KeyArrowDown, gocui.ModNone, cursorDown); err != nil {
 		return err
 	}
@@ -300,57 +249,10 @@ func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("", gocui.KeyDelete, gocui.ModNone, quit); err != nil {
 		return err
 	}
-	// if err := g.SetKeybinding("main", gocui.KeyCtrlS, gocui.ModNone, saveMain); err != nil {
-	// 	return err
-	// }
-	// if err := g.SetKeybinding("main", gocui.KeyCtrlW, gocui.ModNone, saveVisualMain); err != nil {
-	// 	return err
-	// }
 	return nil
 }
 
-// func saveMain(g *gocui.Gui, v *gocui.View) error {
-// 	f, err := ioutil.TempFile("", "gocui_demo_")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer f.Close()
-
-// 	p := make([]byte, 5)
-// 	v.Rewind()
-// 	for {
-// 		n, err := v.Read(p)
-// 		if n > 0 {
-// 			if _, err := f.Write(p[:n]); err != nil {
-// 				return err
-// 			}
-// 		}
-// 		if err == io.EOF {
-// 			break
-// 		}
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
-
-// func saveVisualMain(g *gocui.Gui, v *gocui.View) error {
-// 	f, err := ioutil.TempFile("", "gocui_demo_")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer f.Close()
-
-// 	vb := v.ViewBuffer()
-// 	if _, err := io.Copy(f, strings.NewReader(vb)); err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 func makeCharacterMenuLayout(g *gocui.Gui) error {
-	// g.CurrentView().Highlight = false
 	_, maxY := g.Size()
 	if v, err := g.SetView("character", 10, -1, 32, maxY); err != nil {
 		if err != gocui.ErrUnknownView {
@@ -370,7 +272,6 @@ func makeCharacterMenuLayout(g *gocui.Gui) error {
 }
 
 func layout(g *gocui.Gui) error {
-	// maxX, maxY := g.Size()
 	_, maxY := g.Size()
 	if v, err := g.SetView("main", -1, -1, 10, maxY); err != nil {
 		if err != gocui.ErrUnknownView {
@@ -382,28 +283,10 @@ func layout(g *gocui.Gui) error {
 		for _, option := range MAIN_MENU_OPTIONS {
 			fmt.Fprintln(v, option)
 		}
-		// fmt.Fprintln(v, "Character")
-		// fmt.Fprintln(v, "Companions")
-		// fmt.Fprintln(v, "Retainers")
 		if _, err := g.SetCurrentView("main"); err != nil {
 			return err
 		}
 	}
-	// if v, err := g.SetView("main", 30, -1, maxX, maxY); err != nil {
-	// 	if err != gocui.ErrUnknownView {
-	// 		return err
-	// 	}
-	// 	b, err := ioutil.ReadFile("Mark.Twain-Tom.Sawyer.txt")
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	fmt.Fprintf(v, "%s", b)
-	// 	v.Editable = true
-	// 	v.Wrap = true
-	// 	if _, err := g.SetCurrentView("side"); err != nil {
-	// 		return err
-	// 	}
-	// }
 	return nil
 }
 
