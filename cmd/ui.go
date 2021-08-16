@@ -5,11 +5,15 @@ import (
 	"log"
 	"strings"
 
+	"github.com/electr0sheep/lodestone-cli/lib"
 	"github.com/jroimartin/gocui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
+var CHARACTER lib.Character
 var CURRENT_MENU string = ""
+var VIEW_RIGHT_BOUND int
 var MAIN_MENU_OPTIONS = []string{
 	"Character",
 	"Companions",
@@ -40,6 +44,8 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		CHARACTER = lib.Character{Id: viper.GetString("character_id")}
+		CHARACTER.GetProfile()
 		g, err := gocui.NewGui(gocui.Output256)
 		if err != nil {
 			log.Panicln(err)
@@ -74,18 +80,20 @@ func init() {
 
 func cursorDown(g *gocui.Gui, v *gocui.View) error {
 	menuLength := 0
-	switch g.CurrentView().Name() {
+	switch v.Name() {
 	case "main":
 		menuLength = len(MAIN_MENU_OPTIONS)
 	case "character":
 		menuLength = len(CHARACTER_MENU_OPTIONS)
+	case "job":
+		menuLength = len(CHARACTER.Jobs)
 	}
 
 	if v != nil {
 		cx, cy := v.Cursor()
-		if cy < menuLength-1 {
+		ox, oy := v.Origin()
+		if cy+oy < menuLength-1 {
 			if err := v.SetCursor(cx, cy+1); err != nil {
-				ox, oy := v.Origin()
 				if err := v.SetOrigin(ox, oy+1); err != nil {
 					return err
 				}
@@ -150,12 +158,44 @@ func processMainMenuSelection(g *gocui.Gui, selection string) {
 	}
 }
 
+func showProfilePopup(g *gocui.Gui) {
+	showMessage(g,
+		fmt.Sprintf(`Title        : %s
+World        : %s
+Race         : %s
+Clan         : %s
+Gender       : %s
+Nameday      : %s
+Guardian     : %s
+City-state   : %s
+Grand Company: %s
+Free Company : %s`,
+			CHARACTER.Title,
+			CHARACTER.World,
+			CHARACTER.Race,
+			CHARACTER.Clan,
+			CHARACTER.Gender,
+			CHARACTER.Nameday,
+			CHARACTER.Guardian,
+			CHARACTER.CityState,
+			CHARACTER.GrandCompany,
+			CHARACTER.FreeCompany))
+
+}
+
+func showJobMenu(g *gocui.Gui) {
+	if CHARACTER.Jobs == nil {
+		CHARACTER.GetJobs()
+	}
+	makeJobMenuLayout(g)
+}
+
 func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	switch selection {
 	case "Profile":
-		showMessage(g, selection)
+		showProfilePopup(g)
 	case "Class/Job":
-		showMessage(g, selection)
+		showJobMenu(g)
 	case "Minions":
 		showMessage(g, selection)
 	case "Mounts":
@@ -181,16 +221,24 @@ func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	}
 }
 
+func processJobMenuChange(g *gocui.Gui, job lib.Job) {
+	makeJobDetailView(g, job)
+}
+
 func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
+	_, oy := v.Origin()
 	_, cy := v.Cursor()
 
-	switch g.CurrentView().Name() {
+	switch v.Name() {
 	case "main":
-		selectedOption := MAIN_MENU_OPTIONS[cy]
+		selectedOption := MAIN_MENU_OPTIONS[oy+cy]
 		processMainMenuSelection(g, selectedOption)
 	case "character":
-		selectedOption := CHARACTER_MENU_OPTIONS[cy]
+		selectedOption := CHARACTER_MENU_OPTIONS[oy+cy]
 		processCharacterMenuSelection(g, selectedOption)
+	case "job":
+		selectedJob := CHARACTER.Jobs[oy+cy]
+		processJobMenuChange(g, selectedJob)
 	}
 	return nil
 }
@@ -234,7 +282,31 @@ func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("character", gocui.KeyArrowRight, gocui.ModNone, processMenuSelection); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("character", gocui.KeyArrowLeft, gocui.ModNone, returnToMainMenu); err != nil {
+	if err := g.SetKeybinding("character", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			return returnToMenu(g, v, "main")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("job", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("job", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("job", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("job_detail")
+			return returnToMenu(g, v, "character")
+		}); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, delMsg); err != nil {
@@ -251,13 +323,60 @@ func keybindings(g *gocui.Gui) error {
 	}
 	return nil
 }
-
-func makeCharacterMenuLayout(g *gocui.Gui) error {
-	_, maxY := g.Size()
-	if v, err := g.SetView("character", 10, -1, 32, maxY); err != nil {
+func makeJobDetailView(g *gocui.Gui, job lib.Job) error {
+	g.DeleteView("job_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("job_detail", VIEW_RIGHT_BOUND, -1, maxX, maxY); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
+		fmt.Fprintf(v,
+			`Name : %s
+Role : %s
+Level: %s
+XP   : %s`,
+			job.Name,
+			job.Role,
+			job.Level,
+			job.Xp)
+	}
+	return nil
+}
+
+func makeJobMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	longestJobNameLength := 0
+	for _, job := range CHARACTER.Jobs {
+		if len(job.Name) > longestJobNameLength {
+			longestJobNameLength = len(job.Name)
+		}
+	}
+	if v, err := g.SetView("job", VIEW_RIGHT_BOUND, -1, VIEW_RIGHT_BOUND+1+longestJobNameLength, maxY); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		VIEW_RIGHT_BOUND = VIEW_RIGHT_BOUND + longestJobNameLength + 1
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, job := range CHARACTER.Jobs {
+			fmt.Fprintln(v, job.Name)
+		}
+		if _, err := g.SetCurrentView("job"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
+	}
+	return nil
+}
+
+func makeCharacterMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	if v, err := g.SetView("character", VIEW_RIGHT_BOUND, -1, VIEW_RIGHT_BOUND+22, maxY); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		VIEW_RIGHT_BOUND = VIEW_RIGHT_BOUND + 22
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
@@ -277,6 +396,7 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
+		VIEW_RIGHT_BOUND = 10
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
@@ -290,11 +410,13 @@ func layout(g *gocui.Gui) error {
 	return nil
 }
 
-func returnToMainMenu(g *gocui.Gui, v *gocui.View) error {
+func returnToMenu(g *gocui.Gui, v *gocui.View, menuName string) error {
+	viewX, _ := v.Size()
 	if err := g.DeleteView(g.CurrentView().Name()); err != nil {
 		return err
 	}
-	if _, err := g.SetCurrentView("main"); err != nil {
+	VIEW_RIGHT_BOUND = VIEW_RIGHT_BOUND - viewX - 1
+	if _, err := g.SetCurrentView(menuName); err != nil {
 		return err
 	}
 	return nil
