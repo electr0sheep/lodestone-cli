@@ -325,7 +325,75 @@ func minionDetailMenu(c lib.Character, m lib.Minion) {
 }
 
 func mountMenu(c lib.Character) {
+	if c.Mounts == nil {
+		c.GetMounts()
+	}
 
+	templates := &promptui.SelectTemplates{
+		Label:    "Mounts",
+		Active:   "\U000025B8 {{ .Name | cyan }}",
+		Inactive: "  {{ .Name | cyan }}",
+		Selected: "\U000025B8 {{ .Name | red | cyan }}",
+	}
+
+	prompt := promptui.Select{
+		Items:        c.Mounts,
+		Templates:    templates,
+		Size:         10,
+		HideSelected: true,
+	}
+
+	i, _, err := prompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	if c.Mounts[i].Description == "" {
+		c.GetMountDetails(&c.Mounts[i])
+		// also need to format description for use here
+		c.Mounts[i].Description = formatForTerminal(c.Mounts[i].Description)
+	}
+
+	mountDetailMenu(c, c.Mounts[i])
+}
+
+func mountDetailMenu(c lib.Character, m lib.Mount) {
+	type attribute struct {
+		Name  string
+		Value string
+	}
+
+	mountAttributes := []attribute{
+		{Name: "Movement        ", Value: m.Movement},
+		{Name: "Acquisition Date", Value: m.AcquistionDate},
+		{Name: "Description     ", Value: ""},
+	}
+
+	templates := &promptui.SelectTemplates{
+		Label:    m.Name,
+		Active:   "\U000025B8 {{ .Name | cyan }}: {{ .Value }}",
+		Inactive: "  {{ .Name | cyan }}: {{ .Value }}",
+		Selected: "\U000025B8 {{ .Name | red | cyan }}: {{ .Value }}",
+		Details:  m.Description,
+	}
+
+	prompt := promptui.Select{
+		Items:        mountAttributes,
+		Templates:    templates,
+		Size:         10,
+		HideSelected: true,
+	}
+
+	_, _, err := prompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	characterMenu(c)
 }
 
 func currencyMenu(c lib.Character) {

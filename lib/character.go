@@ -241,6 +241,35 @@ func (c *Character) GetMinions() {
 	c.Minions = minions
 }
 
+// getting all minion data at once causes issues
+// this allows to lazy load
+func (c *Character) GetMountDetails(m *Mount) {
+	client := &http.Client{}
+	req := lodestone.SetupRequest(fmt.Sprintf("mount/tooltip/%s", m.Id), c.Id)
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	m.AcquistionDate = doc.Find(".mount__header__data").Text()
+	if strings.Contains(m.AcquistionDate, "ldst_strftime(") {
+		// need to convert epoch to date
+		epoch := strings.Split(m.AcquistionDate, "ldst_strftime(")[1]
+		epoch = strings.Split(epoch, ",")[0]
+		timestamp, _ := strconv.ParseInt(epoch, 10, 64)
+		myDate := time.Unix(timestamp, 0)
+		m.AcquistionDate = fmt.Sprintf("%d/%d/%d", myDate.Month(), myDate.Day(), myDate.Year())
+	}
+	fmt.Println(doc.Find(".mount__text").Html())
+	fmt.Println(doc.Find(".mount__text").Text())
+	m.Movement = doc.Find(".mount__type span").Text()
+	m.Description = doc.Find(".mount__text").Text()
+}
+
 func (c *Character) GetMounts() {
 	client := &http.Client{}
 	req := lodestone.SetupMobileRequest("mount", c.Id)
@@ -256,11 +285,14 @@ func (c *Character) GetMounts() {
 	if err != nil {
 		panic(err)
 	}
-	mountElements := doc.Find(".mount__name")
+
+	mountElements := doc.Find(".mount__list__item")
 
 	mountElements.Each(func(_ int, mountElement *goquery.Selection) {
-		name := mountElement.Text()
-		mounts = append(mounts, Mount{Name: name})
+		tooltipHref, _ := mountElement.Attr("data-tooltip_href")
+		id := strings.Split(tooltipHref, "/")[6]
+		name := mountElement.Find(".mount__name").Text()
+		mounts = append(mounts, Mount{Id: id, Name: name})
 	})
 
 	c.Mounts = mounts

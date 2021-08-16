@@ -1,5 +1,9 @@
 package lib
 
 type Mount struct {
-	Name string
+	AcquistionDate string
+	Description    string
+	Id             string
+	Movement       string
+	Name           string
 }
