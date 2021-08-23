@@ -36,13 +36,7 @@ var CHARACTER_MENU_OPTIONS = []string{
 // uiCmd represents the ui command
 var uiCmd = &cobra.Command{
 	Use:   "ui",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Provides a UI to navigate Lodestone data",
 	Run: func(cmd *cobra.Command, args []string) {
 		CHARACTER = lib.Character{Id: viper.GetString("character_id")}
 		CHARACTER.GetProfile()
@@ -52,7 +46,7 @@ to quickly create a Cobra application.`,
 		}
 		defer g.Close()
 
-		g.SetManagerFunc(layout)
+		g.SetManagerFunc(makeMainMenuLayout)
 
 		if err := keybindings(g); err != nil {
 			log.Panicln(err)
@@ -87,6 +81,12 @@ func cursorDown(g *gocui.Gui, v *gocui.View) error {
 		menuLength = len(CHARACTER_MENU_OPTIONS)
 	case "job":
 		menuLength = len(CHARACTER.Jobs)
+	case "minion":
+		menuLength = len(CHARACTER.Minions)
+	case "mount":
+		menuLength = len(CHARACTER.Mounts)
+	case "achievement":
+		menuLength = len(CHARACTER.Achievements)
 	}
 
 	if v != nil {
@@ -147,10 +147,65 @@ func showMessage(g *gocui.Gui, message string) error {
 	return nil
 }
 
+func switchMenu(g *gocui.Gui, nextMenu string) error {
+	currentMenu := g.CurrentView().Name()
+	if currentMenu != "main" {
+		if err := g.DeleteView(currentMenu); err != nil {
+			return err
+		}
+	}
+	switch nextMenu {
+	case "main":
+		g.SetCurrentView("main")
+	case "character":
+		return makeCharacterMenuLayout(g)
+	case "profile":
+		return makeProfileMenuLayout(g)
+	case "job":
+		return showJobMenu(g)
+	case "minion":
+		return showMinionMenu(g)
+	case "mount":
+		return showMountMenu(g)
+	case "achievement":
+		return showAchievementMenu(g)
+	}
+	return nil
+}
+
+func makeProfileMenuLayout(g *gocui.Gui) error {
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("profile", 0, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Profile", CHARACTER.Name)
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+
+		fmt.Fprintf(v, "Name         : %s\n", CHARACTER.Name)
+		fmt.Fprintf(v, "Title        : %s\n", CHARACTER.Title)
+		fmt.Fprintf(v, "World        : %s\n", CHARACTER.World)
+		fmt.Fprintf(v, "Race         : %s\n", CHARACTER.Race)
+		fmt.Fprintf(v, "Clan         : %s\n", CHARACTER.Clan)
+		fmt.Fprintf(v, "Gender       : %s\n", CHARACTER.Gender)
+		fmt.Fprintf(v, "Nameday      : %s\n", CHARACTER.Nameday)
+		fmt.Fprintf(v, "Guardian     : %s\n", CHARACTER.Guardian)
+		fmt.Fprintf(v, "City-state   : %s\n", CHARACTER.CityState)
+		fmt.Fprintf(v, "Grand Company: %s\n", CHARACTER.GrandCompany)
+		fmt.Fprintf(v, "Free Company : %s\n", CHARACTER.FreeCompany)
+
+		if _, err := g.SetCurrentView("profile"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func processMainMenuSelection(g *gocui.Gui, selection string) {
 	switch selection {
 	case "Character":
-		makeCharacterMenuLayout(g)
+		switchMenu(g, "character")
 	case "Companions":
 		showMessage(g, selection)
 	case "Retainers":
@@ -158,54 +213,50 @@ func processMainMenuSelection(g *gocui.Gui, selection string) {
 	}
 }
 
-func showProfilePopup(g *gocui.Gui) {
-	showMessage(g,
-		fmt.Sprintf(`Title        : %s
-World        : %s
-Race         : %s
-Clan         : %s
-Gender       : %s
-Nameday      : %s
-Guardian     : %s
-City-state   : %s
-Grand Company: %s
-Free Company : %s`,
-			CHARACTER.Title,
-			CHARACTER.World,
-			CHARACTER.Race,
-			CHARACTER.Clan,
-			CHARACTER.Gender,
-			CHARACTER.Nameday,
-			CHARACTER.Guardian,
-			CHARACTER.CityState,
-			CHARACTER.GrandCompany,
-			CHARACTER.FreeCompany))
-
-}
-
-func showJobMenu(g *gocui.Gui) {
+func showJobMenu(g *gocui.Gui) error {
 	if CHARACTER.Jobs == nil {
 		CHARACTER.GetJobs()
 	}
-	makeJobMenuLayout(g)
+	return makeJobMenuLayout(g)
+}
+
+func showMinionMenu(g *gocui.Gui) error {
+	if CHARACTER.Minions == nil {
+		CHARACTER.GetMinions()
+	}
+	return makeMinionMenuLayout(g)
+}
+
+func showMountMenu(g *gocui.Gui) error {
+	if CHARACTER.Mounts == nil {
+		CHARACTER.GetMounts()
+	}
+	return makeMountMenuLayout(g)
+}
+
+func showAchievementMenu(g *gocui.Gui) error {
+	if CHARACTER.Achievements == nil {
+		CHARACTER.GetAchievements()
+	}
+	return makeAchievementMenuLayout(g)
 }
 
 func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	switch selection {
 	case "Profile":
-		showProfilePopup(g)
+		switchMenu(g, "profile")
 	case "Class/Job":
-		showJobMenu(g)
+		switchMenu(g, "job")
 	case "Minions":
-		showMessage(g, selection)
+		switchMenu(g, "minion")
 	case "Mounts":
-		showMessage(g, selection)
+		switchMenu(g, "mount")
 	case "Currencies/Reputation":
 		showMessage(g, selection)
 	case "Quests":
 		showMessage(g, selection)
 	case "Achievements":
-		showMessage(g, selection)
+		switchMenu(g, "achievement")
 	case "Orchestrion Roll":
 		showMessage(g, selection)
 	case "PvP Profile":
@@ -225,6 +276,44 @@ func processJobMenuChange(g *gocui.Gui, job lib.Job) {
 	makeJobDetailView(g, job)
 }
 
+func processMinionMenuChange(g *gocui.Gui, minion *lib.Minion) {
+	makeMinionDetailView(g, minion)
+}
+
+func processMountMenuChange(g *gocui.Gui, mount *lib.Mount) {
+	makeMountDetailView(g, mount)
+}
+
+func processAchievementMenuChange(g *gocui.Gui, achievement *lib.Achievement) {
+	makeAchievementDetailView(g, achievement)
+}
+
+func getMountDetails(g *gocui.Gui, v *gocui.View) error {
+	_, oy := v.Origin()
+	_, cy := v.Cursor()
+
+	selectedMount := &CHARACTER.Mounts[oy+cy]
+
+	if selectedMount.Description == "" {
+		CHARACTER.GetMountDetails(selectedMount)
+	}
+
+	return makeMountDetailView(g, selectedMount)
+}
+
+func getMinionDetails(g *gocui.Gui, v *gocui.View) error {
+	_, oy := v.Origin()
+	_, cy := v.Cursor()
+
+	selectedMinion := &CHARACTER.Minions[oy+cy]
+
+	if selectedMinion.Description == "" {
+		CHARACTER.GetMinionDetails(selectedMinion)
+	}
+
+	return makeMinionDetailView(g, selectedMinion)
+}
+
 func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
 	_, oy := v.Origin()
 	_, cy := v.Cursor()
@@ -239,6 +328,15 @@ func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
 	case "job":
 		selectedJob := CHARACTER.Jobs[oy+cy]
 		processJobMenuChange(g, selectedJob)
+	case "minion":
+		selectedMinion := &CHARACTER.Minions[oy+cy]
+		processMinionMenuChange(g, selectedMinion)
+	case "mount":
+		selectedMount := &CHARACTER.Mounts[oy+cy]
+		processMountMenuChange(g, selectedMount)
+	case "achievement":
+		selectedAchievement := &CHARACTER.Achievements[oy+cy]
+		processAchievementMenuChange(g, selectedAchievement)
 	}
 	return nil
 }
@@ -284,7 +382,13 @@ func keybindings(g *gocui.Gui) error {
 	}
 	if err := g.SetKeybinding("character", gocui.KeyArrowLeft, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
-			return returnToMenu(g, v, "main")
+			return switchMenu(g, "main")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("profile", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			return switchMenu(g, "character")
 		}); err != nil {
 		return err
 	}
@@ -305,7 +409,76 @@ func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("job", gocui.KeyArrowLeft, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
 			g.DeleteView("job_detail")
-			return returnToMenu(g, v, "character")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("minion", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("minion", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("minion", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("minion_detail")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("minion", gocui.KeyArrowRight, gocui.ModNone, getMinionDetails); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("mount", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("mount", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("mount", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("mount_detail")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("mount", gocui.KeyArrowRight, gocui.ModNone, getMountDetails); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("achievement", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("achievement", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("achievement", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("achievement_detail")
+			return switchMenu(g, "character")
 		}); err != nil {
 		return err
 	}
@@ -323,22 +496,65 @@ func keybindings(g *gocui.Gui) error {
 	}
 	return nil
 }
+
 func makeJobDetailView(g *gocui.Gui, job lib.Job) error {
 	g.DeleteView("job_detail")
 	maxX, maxY := g.Size()
-	if v, err := g.SetView("job_detail", VIEW_RIGHT_BOUND, -1, maxX, maxY); err != nil {
+	if v, err := g.SetView("job_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		fmt.Fprintf(v,
-			`Name : %s
-Role : %s
-Level: %s
-XP   : %s`,
-			job.Name,
-			job.Role,
-			job.Level,
-			job.Xp)
+		v.Title = job.Name
+		fmt.Fprintf(v, "Role : %s\n", job.Role)
+		fmt.Fprintf(v, "Level: %s\n", job.Level)
+		fmt.Fprintf(v, "XP   : %s\n", job.Xp)
+	}
+	return nil
+}
+
+func makeAchievementDetailView(g *gocui.Gui, achievement *lib.Achievement) error {
+	g.DeleteView("achievement_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("achievement_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = achievement.Name
+		fmt.Fprintf(v, "Acquistion Date:\n%s\n", achievement.AcquistionDate)
+	}
+
+	return nil
+}
+
+func makeMountDetailView(g *gocui.Gui, mount *lib.Mount) error {
+	g.DeleteView("mount_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("mount_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		sizeX, _ := v.Size()
+		v.Title = mount.Name
+		fmt.Fprintf(v, "Movement       : %s\n", mount.Movement)
+		fmt.Fprintf(v, "Max Riders     : %s\n", mount.MaxRiders)
+		fmt.Fprintf(v, "Acquistion Date: %s\n", mount.AcquistionDate)
+		fmt.Fprintf(v, "Description    :\n%s\n", wrapStringToSize(mount.Description, sizeX))
+	}
+	return nil
+}
+
+func makeMinionDetailView(g *gocui.Gui, minion *lib.Minion) error {
+	g.DeleteView("minion_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("minion_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		sizeX, _ := v.Size()
+		v.Title = minion.Name
+		fmt.Fprintf(v, "Behavior       : %s\n", minion.Behavior)
+		fmt.Fprintf(v, "Acquistion Date: %s\n", minion.AcquistionDate)
+		fmt.Fprintf(v, "Description    :\n%s\n", wrapStringToSize(minion.Description, sizeX))
 	}
 	return nil
 }
@@ -351,11 +567,16 @@ func makeJobMenuLayout(g *gocui.Gui) error {
 			longestJobNameLength = len(job.Name)
 		}
 	}
-	if v, err := g.SetView("job", VIEW_RIGHT_BOUND, -1, VIEW_RIGHT_BOUND+1+longestJobNameLength, maxY); err != nil {
+	if longestJobNameLength+1 > len(CHARACTER.Name)+18 {
+		VIEW_RIGHT_BOUND = longestJobNameLength + 1
+	} else {
+		VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 18
+	}
+	if v, err := g.SetView("job", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		VIEW_RIGHT_BOUND = VIEW_RIGHT_BOUND + longestJobNameLength + 1
+		v.Title = fmt.Sprintf("%s>Character>Jobs", CHARACTER.Name)
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
@@ -370,13 +591,109 @@ func makeJobMenuLayout(g *gocui.Gui) error {
 	return nil
 }
 
-func makeCharacterMenuLayout(g *gocui.Gui) error {
+func makeAchievementMenuLayout(g *gocui.Gui) error {
 	_, maxY := g.Size()
-	if v, err := g.SetView("character", VIEW_RIGHT_BOUND, -1, VIEW_RIGHT_BOUND+22, maxY); err != nil {
+	longestAchievementNameLength := 0
+	for _, achievement := range CHARACTER.Achievements {
+		if len(achievement.Name) > longestAchievementNameLength {
+			longestAchievementNameLength = len(achievement.Name)
+		}
+	}
+	if longestAchievementNameLength+1 > len(CHARACTER.Name)+26 {
+		VIEW_RIGHT_BOUND = longestAchievementNameLength + 1
+	} else {
+		VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 26
+	}
+	if v, err := g.SetView("achievement", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		VIEW_RIGHT_BOUND = VIEW_RIGHT_BOUND + 22
+		v.Title = fmt.Sprintf("%s>Character>Achievements", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, achievement := range CHARACTER.Achievements {
+			fmt.Fprintln(v, achievement.Name)
+		}
+		if _, err := g.SetCurrentView("achievement"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
+	}
+	return nil
+}
+
+func makeMountMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	longestMountNameLength := 0
+	for _, mount := range CHARACTER.Mounts {
+		if len(mount.Name) > longestMountNameLength {
+			longestMountNameLength = len(mount.Name)
+		}
+	}
+	if longestMountNameLength+1 > len(CHARACTER.Name)+20 {
+		VIEW_RIGHT_BOUND = longestMountNameLength + 1
+	} else {
+		VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 20
+	}
+	if v, err := g.SetView("mount", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Mounts", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, mount := range CHARACTER.Mounts {
+			fmt.Fprintln(v, mount.Name)
+		}
+		if _, err := g.SetCurrentView("mount"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
+	}
+	return nil
+}
+
+func makeMinionMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	longestMinionNameLength := 0
+	for _, minion := range CHARACTER.Minions {
+		if len(minion.Name) > longestMinionNameLength {
+			longestMinionNameLength = len(minion.Name)
+		}
+	}
+	if longestMinionNameLength+1 > len(CHARACTER.Name)+21 {
+		VIEW_RIGHT_BOUND = longestMinionNameLength + 1
+	} else {
+		VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 21
+	}
+	if v, err := g.SetView("minion", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Minions", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, minion := range CHARACTER.Minions {
+			fmt.Fprintln(v, minion.Name)
+		}
+		if _, err := g.SetCurrentView("minion"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
+	}
+	return nil
+}
+
+func makeCharacterMenuLayout(g *gocui.Gui) error {
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("character", 0, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character", CHARACTER.Name)
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
@@ -390,13 +707,14 @@ func makeCharacterMenuLayout(g *gocui.Gui) error {
 	return nil
 }
 
-func layout(g *gocui.Gui) error {
-	_, maxY := g.Size()
-	if v, err := g.SetView("main", -1, -1, 10, maxY); err != nil {
+func makeMainMenuLayout(g *gocui.Gui) error {
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("main", 0, 0, maxX-1, maxY-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		VIEW_RIGHT_BOUND = 10
+		v.Title = CHARACTER.Name
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
@@ -410,14 +728,19 @@ func layout(g *gocui.Gui) error {
 	return nil
 }
 
-func returnToMenu(g *gocui.Gui, v *gocui.View, menuName string) error {
-	viewX, _ := v.Size()
-	if err := g.DeleteView(g.CurrentView().Name()); err != nil {
-		return err
+func wrapStringToSize(s string, maxLength int) string {
+	stringWords := strings.Split(s, " ")
+	var stringLine string
+	var formattedString []string
+	for _, word := range stringWords {
+		if len(stringLine)+len(word)+1 > maxLength {
+			formattedString = append(formattedString, strings.TrimSpace(stringLine))
+			stringLine = word
+		} else {
+			stringLine += " " + word
+		}
 	}
-	VIEW_RIGHT_BOUND = VIEW_RIGHT_BOUND - viewX - 1
-	if _, err := g.SetCurrentView(menuName); err != nil {
-		return err
-	}
-	return nil
+	formattedString = append(formattedString, strings.TrimSpace(stringLine))
+
+	return strings.Join(formattedString, "\n")
 }

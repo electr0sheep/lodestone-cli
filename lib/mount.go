@@ -5,5 +5,6 @@ type Mount struct {
 	Description    string
 	Id             string
 	Movement       string
+	MaxRiders      string
 	Name           string
 }

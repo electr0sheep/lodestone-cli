@@ -75,12 +75,12 @@ func (c *Character) GetAchievements() {
 	var achievements []Achievement
 
 	for page := 1; morePages; page++ {
-		progressIndicator := map[int]string{
-			0: ".  ",
-			1: ".. ",
-			2: "...",
-		}
-		fmt.Printf("\rGetting achievement page %d%s", page, progressIndicator[(page-1)%3])
+		// progressIndicator := map[int]string{
+		// 	0: ".  ",
+		// 	1: ".. ",
+		// 	2: "...",
+		// }
+		// fmt.Printf("\rGetting achievement page %d%s", page, progressIndicator[(page-1)%3])
 		req := lodestone.SetupMobileRequest(fmt.Sprintf("achievement/?page=%d", page), c.Id)
 
 		resp, err := client.Do(req)
@@ -93,16 +93,25 @@ func (c *Character) GetAchievements() {
 		if err != nil {
 			panic(err)
 		}
-		achievementElements := doc.Find(".entry__achievement").Find(".entry__activity__txt")
+		achievementElements := doc.Find(".entry__achievement")
 
 		if achievementElements.Length() == 0 {
-			fmt.Printf("\r                                 \r")
+			// fmt.Printf("\r                                 \r")
 			morePages = false
 		} else {
 			achievementElements.Each(func(_ int, achievementElement *goquery.Selection) {
-				name := achievementElement.Text()
+				name := achievementElement.Find(".entry__activity__txt").Text()
 				name = strings.Split(name, "\"")[1]
-				achievements = append(achievements, Achievement{Name: name})
+				acquistionDate := achievementElement.Find(".entry__activity__time").Text()
+				if strings.Contains(acquistionDate, "ldst_strftime(") {
+					// need to convert epoch to date
+					epoch := strings.Split(acquistionDate, "ldst_strftime(")[1]
+					epoch = strings.Split(epoch, ",")[0]
+					timestamp, _ := strconv.ParseInt(epoch, 10, 64)
+					myDate := time.Unix(timestamp, 0)
+					acquistionDate = fmt.Sprintf("%d/%d/%d", myDate.Month(), myDate.Day(), myDate.Year())
+				}
+				achievements = append(achievements, Achievement{AcquistionDate: acquistionDate, Name: name})
 			})
 		}
 	}
@@ -116,12 +125,12 @@ func (c *Character) GetCards() {
 	var cards []Card
 
 	for page := 1; morePages; page++ {
-		progressIndicator := map[int]string{
-			0: ".  ",
-			1: ".. ",
-			2: "...",
-		}
-		fmt.Printf("\rGetting card page %d%s", page, progressIndicator[(page-1)%3])
+		// progressIndicator := map[int]string{
+		// 	0: ".  ",
+		// 	1: ".. ",
+		// 	2: "...",
+		// }
+		// fmt.Printf("\rGetting card page %d%s", page, progressIndicator[(page-1)%3])
 		req := lodestone.SetupRequest(fmt.Sprintf("goldsaucer/tripletriad/?hold=1&page=%d", page), c.Id)
 
 		resp, err := client.Do(req)
@@ -137,7 +146,7 @@ func (c *Character) GetCards() {
 		cardElements := doc.Find(".name_inner")
 
 		if cardElements.Length() == 0 {
-			fmt.Printf("\r                                 \r")
+			// fmt.Printf("\r                                 \r")
 			morePages = false
 		} else {
 			cardElements.Each(func(_ int, cardElement *goquery.Selection) {
@@ -264,10 +273,15 @@ func (c *Character) GetMountDetails(m *Mount) {
 		myDate := time.Unix(timestamp, 0)
 		m.AcquistionDate = fmt.Sprintf("%d/%d/%d", myDate.Month(), myDate.Day(), myDate.Year())
 	}
-	fmt.Println(doc.Find(".mount__text").Html())
-	fmt.Println(doc.Find(".mount__text").Text())
 	m.Movement = doc.Find(".mount__type span").Text()
 	m.Description = doc.Find(".mount__text").Text()
+
+	if len(strings.Split(m.Movement, "x")) > 1 {
+		m.MaxRiders = strings.Split(m.Movement, "x")[1]
+		m.Movement = strings.Split(m.Movement, "x")[0]
+	} else {
+		m.MaxRiders = "1"
+	}
 }
 
 func (c *Character) GetMounts() {
