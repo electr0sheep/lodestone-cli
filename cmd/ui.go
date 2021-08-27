@@ -87,6 +87,10 @@ func cursorDown(g *gocui.Gui, v *gocui.View) error {
 		menuLength = len(CHARACTER.Mounts)
 	case "achievement":
 		menuLength = len(CHARACTER.Achievements)
+	case "rep":
+		menuLength = len(CHARACTER.Currencies) + len(CHARACTER.Reputations)
+	case "spell":
+		menuLength = len(CHARACTER.Spells)
 	}
 
 	if v != nil {
@@ -169,6 +173,10 @@ func switchMenu(g *gocui.Gui, nextMenu string) error {
 		return showMountMenu(g)
 	case "achievement":
 		return showAchievementMenu(g)
+	case "rep":
+		return showRepMenu(g)
+	case "spell":
+		return showSpellMenu(g)
 	}
 	return nil
 }
@@ -234,6 +242,20 @@ func showMountMenu(g *gocui.Gui) error {
 	return makeMountMenuLayout(g)
 }
 
+func showSpellMenu(g *gocui.Gui) error {
+	if CHARACTER.Spells == nil {
+		CHARACTER.GetSpells()
+	}
+	return makeSpellMenuLayout(g)
+}
+
+func showRepMenu(g *gocui.Gui) error {
+	if CHARACTER.Currencies == nil || CHARACTER.Reputations == nil {
+		CHARACTER.GetCurrenciesAndRep()
+	}
+	return makeRepMenuLayout(g)
+}
+
 func showAchievementMenu(g *gocui.Gui) error {
 	if CHARACTER.Achievements == nil {
 		CHARACTER.GetAchievements()
@@ -252,7 +274,7 @@ func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	case "Mounts":
 		switchMenu(g, "mount")
 	case "Currencies/Reputation":
-		showMessage(g, selection)
+		switchMenu(g, "rep")
 	case "Quests":
 		showMessage(g, selection)
 	case "Achievements":
@@ -262,7 +284,7 @@ func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	case "PvP Profile":
 		showMessage(g, selection)
 	case "Blue Magic Spellbook":
-		showMessage(g, selection)
+		switchMenu(g, "spell")
 	case "Trust":
 		showMessage(g, selection)
 	case "The Gold Saucer":
@@ -286,6 +308,18 @@ func processMountMenuChange(g *gocui.Gui, mount *lib.Mount) {
 
 func processAchievementMenuChange(g *gocui.Gui, achievement *lib.Achievement) {
 	makeAchievementDetailView(g, achievement)
+}
+
+func processCurrencyMenuChange(g *gocui.Gui, currency lib.Currency) {
+	makeCurrencyDetailView(g, currency)
+}
+
+func processReputationMenuChange(g *gocui.Gui, reputation lib.Reputation) {
+	makeReputationDetailView(g, reputation)
+}
+
+func processSpellMenuChange(g *gocui.Gui, spell lib.Spell) {
+	makeSpellDetailView(g, spell)
 }
 
 func getMountDetails(g *gocui.Gui, v *gocui.View) error {
@@ -337,6 +371,17 @@ func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
 	case "achievement":
 		selectedAchievement := &CHARACTER.Achievements[oy+cy]
 		processAchievementMenuChange(g, selectedAchievement)
+	case "rep":
+		if len(CHARACTER.Currencies) > oy+cy {
+			selectedCurrency := CHARACTER.Currencies[oy+cy]
+			processCurrencyMenuChange(g, selectedCurrency)
+		} else {
+			selectedReputation := CHARACTER.Reputations[oy+cy-len(CHARACTER.Currencies)]
+			processReputationMenuChange(g, selectedReputation)
+		}
+	case "spell":
+		selectedSpell := CHARACTER.Spells[oy+cy]
+		processSpellMenuChange(g, selectedSpell)
 	}
 	return nil
 }
@@ -482,6 +527,56 @@ func keybindings(g *gocui.Gui) error {
 		}); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("achievement", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("rep", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("rep", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("reputation_detail")
+			g.DeleteView("currency_detail")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("rep", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("spell", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("spell", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("spell_detail")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("spell", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
 	if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, delMsg); err != nil {
 		return err
 	}
@@ -509,6 +604,70 @@ func makeJobDetailView(g *gocui.Gui, job lib.Job) error {
 		fmt.Fprintf(v, "Level: %s\n", job.Level)
 		fmt.Fprintf(v, "XP   : %s\n", job.Xp)
 	}
+	return nil
+}
+
+func makeSpellDetailView(g *gocui.Gui, spell lib.Spell) error {
+	g.DeleteView("spell_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("spell_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		sizeX, _ := v.Size()
+		v.Title = spell.Name
+		fmt.Fprintf(v, "Aspect: %s\n", spell.Aspect)
+		fmt.Fprintf(v, "Rank: %s\n", spell.Rank)
+		fmt.Fprintf(v, "Type: %s\n", spell.Type)
+		fmt.Fprintf(v, "Where to Learn:\n%s\n", spell.WhereToLearn)
+		fmt.Fprintf(v, "Description:\n%s\n", wrapStringToSize(spell.Description, sizeX))
+	}
+
+	return nil
+}
+
+func makeReputationDetailView(g *gocui.Gui, reputation lib.Reputation) error {
+	g.DeleteView("currency_detail")
+	g.DeleteView("reputation_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("reputation_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = reputation.Name
+		fmt.Fprintf(v, "Type            : %s\n", reputation.Type)
+		if reputation.ReputationLevel != "" {
+			fmt.Fprintf(v, "Reputation Level: %s\n", reputation.ReputationLevel)
+		}
+		fmt.Fprintf(v, "Current Amount  : %s\n", reputation.CurrentAmount)
+		if reputation.Maximum != "" {
+			fmt.Fprintf(v, "Maximum         : %s\n", reputation.Maximum)
+		}
+	}
+
+	return nil
+}
+
+func makeCurrencyDetailView(g *gocui.Gui, currency lib.Currency) error {
+	g.DeleteView("currency_detail")
+	g.DeleteView("reputation_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("currency_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		if currency.Name != "" {
+			v.Title = currency.Name
+		} else {
+			v.Title = currency.Type
+		}
+		fmt.Fprintf(v, "Type          : %s\n", currency.Type)
+		fmt.Fprintf(v, "Current Amount: %s\n", currency.CurrentAmount)
+		if currency.Maximum != "" {
+			fmt.Fprintf(v, "Maximum       : %s\n", currency.Maximum)
+		}
+	}
+
 	return nil
 }
 
@@ -559,6 +718,38 @@ func makeMinionDetailView(g *gocui.Gui, minion *lib.Minion) error {
 	return nil
 }
 
+func makeSpellMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	longestSpellNameLength := 0
+	for _, spell := range CHARACTER.Spells {
+		if len(spell.Name) > longestSpellNameLength {
+			longestSpellNameLength = len(spell.Name)
+		}
+	}
+	if longestSpellNameLength+1 > len(CHARACTER.Name)+24 {
+		VIEW_RIGHT_BOUND = longestSpellNameLength + 1
+	} else {
+		VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 24
+	}
+	if v, err := g.SetView("spell", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Blue Magic", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, spell := range CHARACTER.Spells {
+			fmt.Fprintln(v, spell.Name)
+		}
+		if _, err := g.SetCurrentView("spell"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
+	}
+	return nil
+}
+
 func makeJobMenuLayout(g *gocui.Gui) error {
 	_, maxY := g.Size()
 	longestJobNameLength := 0
@@ -584,6 +775,50 @@ func makeJobMenuLayout(g *gocui.Gui) error {
 			fmt.Fprintln(v, job.Name)
 		}
 		if _, err := g.SetCurrentView("job"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
+	}
+	return nil
+}
+
+func makeRepMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	longestRepOrCurrencyNameLength := 0
+	for _, currency := range CHARACTER.Currencies {
+		if len(currency.Name) > longestRepOrCurrencyNameLength {
+			longestRepOrCurrencyNameLength = len(currency.Name)
+		}
+	}
+	for _, reputation := range CHARACTER.Reputations {
+		if len(reputation.Name) > longestRepOrCurrencyNameLength {
+			longestRepOrCurrencyNameLength = len(reputation.Name)
+		}
+	}
+	if longestRepOrCurrencyNameLength+1 > len(CHARACTER.Name)+26 {
+		VIEW_RIGHT_BOUND = longestRepOrCurrencyNameLength + 1
+	} else {
+		VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 26
+	}
+	if v, err := g.SetView("rep", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Currency/Rep", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, currency := range CHARACTER.Currencies {
+			if currency.Name != "" {
+				fmt.Fprintln(v, currency.Name)
+			} else {
+				fmt.Fprintln(v, currency.Type)
+			}
+		}
+		for _, reputation := range CHARACTER.Reputations {
+			fmt.Fprintln(v, reputation.Name)
+		}
+		if _, err := g.SetCurrentView("rep"); err != nil {
 			return err
 		}
 		processMenuSelection(g, v)
