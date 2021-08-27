@@ -405,18 +405,26 @@ func (c *Character) GetOrchestrions() {
 	if err != nil {
 		panic(err)
 	}
-	orchestrionElements := doc.Find("li:not([class])").Find(".orchestrion-list__name")
+	// orchestrionElements := doc.Find("li:not([class])").Find(".orchestrion-list__name")
+	orchestrionCategories := doc.Find(".orchestrion-category")
 
-	orchestrionElements.Each(func(_ int, orchestrionElement *goquery.Selection) {
-		name := orchestrionElement.Text()
-		name = strings.ReplaceAll(name, "\t", "")
-		name = strings.ReplaceAll(name, "\n", "")
-		// We need to massage the data a little bit. The names of the orchestrions
-		// in ffxivcollect are titles (i.e. The Maiden's Lament as opposed to The maiden's lament)
-		name = strings.Title(name)
-		name = strings.ReplaceAll(name, "'S", "'s")
-		name = strings.ReplaceAll(name, "Ul'Dah", "Ul'dah")
-		orchestrions = append(orchestrions, Orchestrion{Name: name})
+	orchestrionCategories.Each(func(_ int, orchestrionCategory *goquery.Selection) {
+		category := orchestrionCategory.Find(".orchestrion-title").Children().Last().Text()
+		orchestrionElements := orchestrionCategory.Find(".orchestrion-list").Find("li")
+
+		orchestrionElements.Each(func(_ int, orchestrionElement *goquery.Selection) {
+			_, unacquired := orchestrionElement.Attr("class")
+			name := orchestrionElement.Find(".orchestrion-list__name").Text()
+			name = strings.ReplaceAll(name, "\t", "")
+			name = strings.ReplaceAll(name, "\n", "")
+			// We need to massage the data a little bit. The names of the orchestrions
+			// in ffxivcollect are titles (i.e. The Maiden's Lament as opposed to The maiden's lament)
+			// name = strings.Title(name)
+			// name = strings.ReplaceAll(name, "'S", "'s")
+			// name = strings.ReplaceAll(name, "Ul'Dah", "Ul'dah")
+			whereToFind := orchestrionElement.Find(".orchestrion-detail__text").Text()
+			orchestrions = append(orchestrions, Orchestrion{Acquired: !unacquired, Category: category, Name: name, WhereToFind: whereToFind})
+		})
 	})
 
 	c.Orchestrions = orchestrions

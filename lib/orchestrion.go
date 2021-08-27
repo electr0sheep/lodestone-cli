@@ -1,5 +1,8 @@
 package lib
 
 type Orchestrion struct {
-	Name string
+	Acquired    bool
+	Category    string
+	Name        string
+	WhereToFind string
 }

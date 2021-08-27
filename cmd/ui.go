@@ -91,6 +91,8 @@ func cursorDown(g *gocui.Gui, v *gocui.View) error {
 		menuLength = len(CHARACTER.Currencies) + len(CHARACTER.Reputations)
 	case "spell":
 		menuLength = len(CHARACTER.Spells)
+	case "orchestrion":
+		menuLength = len(CHARACTER.Orchestrions)
 	}
 
 	if v != nil {
@@ -177,6 +179,8 @@ func switchMenu(g *gocui.Gui, nextMenu string) error {
 		return showRepMenu(g)
 	case "spell":
 		return showSpellMenu(g)
+	case "orchestrion":
+		return showOrchestrionMenu(g)
 	}
 	return nil
 }
@@ -242,6 +246,13 @@ func showMountMenu(g *gocui.Gui) error {
 	return makeMountMenuLayout(g)
 }
 
+func showOrchestrionMenu(g *gocui.Gui) error {
+	if CHARACTER.Orchestrions == nil {
+		CHARACTER.GetOrchestrions()
+	}
+	return makeOrchestrionMenuLayout(g)
+}
+
 func showSpellMenu(g *gocui.Gui) error {
 	if CHARACTER.Spells == nil {
 		CHARACTER.GetSpells()
@@ -280,7 +291,7 @@ func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	case "Achievements":
 		switchMenu(g, "achievement")
 	case "Orchestrion Roll":
-		showMessage(g, selection)
+		switchMenu(g, "orchestrion")
 	case "PvP Profile":
 		showMessage(g, selection)
 	case "Blue Magic Spellbook":
@@ -316,6 +327,10 @@ func processCurrencyMenuChange(g *gocui.Gui, currency lib.Currency) {
 
 func processReputationMenuChange(g *gocui.Gui, reputation lib.Reputation) {
 	makeReputationDetailView(g, reputation)
+}
+
+func processOrchestrionMenuChange(g *gocui.Gui, orchestrion lib.Orchestrion) {
+	makeOrchestrionDetailView(g, orchestrion)
 }
 
 func processSpellMenuChange(g *gocui.Gui, spell lib.Spell) {
@@ -382,6 +397,9 @@ func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
 	case "spell":
 		selectedSpell := CHARACTER.Spells[oy+cy]
 		processSpellMenuChange(g, selectedSpell)
+	case "orchestrion":
+		selectedOrchestrion := CHARACTER.Orchestrions[oy+cy]
+		processOrchestrionMenuChange(g, selectedOrchestrion)
 	}
 	return nil
 }
@@ -577,6 +595,27 @@ func keybindings(g *gocui.Gui) error {
 		}); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("orchestrion", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("orchestrion", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("orchestrion_detail")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("orchestrion", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
 	if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, delMsg); err != nil {
 		return err
 	}
@@ -607,6 +646,23 @@ func makeJobDetailView(g *gocui.Gui, job lib.Job) error {
 	return nil
 }
 
+func makeOrchestrionDetailView(g *gocui.Gui, orchestrion lib.Orchestrion) error {
+	g.DeleteView("orchestrion_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("orchestrion_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		sizeX, _ := v.Size()
+		v.Title = orchestrion.Name
+		fmt.Fprintf(v, "Acquired     : %t\n", orchestrion.Acquired)
+		fmt.Fprintf(v, "Categroy     : %s\n", orchestrion.Category)
+		fmt.Fprintf(v, "Where to Find:\n%s\n", wrapStringToSize(orchestrion.WhereToFind, sizeX))
+	}
+
+	return nil
+}
+
 func makeSpellDetailView(g *gocui.Gui, spell lib.Spell) error {
 	g.DeleteView("spell_detail")
 	maxX, maxY := g.Size()
@@ -616,11 +672,11 @@ func makeSpellDetailView(g *gocui.Gui, spell lib.Spell) error {
 		}
 		sizeX, _ := v.Size()
 		v.Title = spell.Name
-		fmt.Fprintf(v, "Aspect: %s\n", spell.Aspect)
-		fmt.Fprintf(v, "Rank: %s\n", spell.Rank)
-		fmt.Fprintf(v, "Type: %s\n", spell.Type)
+		fmt.Fprintf(v, "Aspect        : %s\n", spell.Aspect)
+		fmt.Fprintf(v, "Rank          : %s\n", spell.Rank)
+		fmt.Fprintf(v, "Type          : %s\n", spell.Type)
 		fmt.Fprintf(v, "Where to Learn:\n%s\n", spell.WhereToLearn)
-		fmt.Fprintf(v, "Description:\n%s\n", wrapStringToSize(spell.Description, sizeX))
+		fmt.Fprintf(v, "Description   :\n%s\n", wrapStringToSize(spell.Description, sizeX))
 	}
 
 	return nil
@@ -694,10 +750,12 @@ func makeMountDetailView(g *gocui.Gui, mount *lib.Mount) error {
 		}
 		sizeX, _ := v.Size()
 		v.Title = mount.Name
-		fmt.Fprintf(v, "Movement       : %s\n", mount.Movement)
-		fmt.Fprintf(v, "Max Riders     : %s\n", mount.MaxRiders)
-		fmt.Fprintf(v, "Acquistion Date: %s\n", mount.AcquistionDate)
-		fmt.Fprintf(v, "Description    :\n%s\n", wrapStringToSize(mount.Description, sizeX))
+		if mount.Description != "" {
+			fmt.Fprintf(v, "Movement       : %s\n", mount.Movement)
+			fmt.Fprintf(v, "Max Riders     : %s\n", mount.MaxRiders)
+			fmt.Fprintf(v, "Acquistion Date: %s\n", mount.AcquistionDate)
+			fmt.Fprintf(v, "Description    :\n%s\n", wrapStringToSize(mount.Description, sizeX))
+		}
 	}
 	return nil
 }
@@ -711,9 +769,33 @@ func makeMinionDetailView(g *gocui.Gui, minion *lib.Minion) error {
 		}
 		sizeX, _ := v.Size()
 		v.Title = minion.Name
-		fmt.Fprintf(v, "Behavior       : %s\n", minion.Behavior)
-		fmt.Fprintf(v, "Acquistion Date: %s\n", minion.AcquistionDate)
-		fmt.Fprintf(v, "Description    :\n%s\n", wrapStringToSize(minion.Description, sizeX))
+		if minion.Description != "" {
+			fmt.Fprintf(v, "Behavior       : %s\n", minion.Behavior)
+			fmt.Fprintf(v, "Acquistion Date: %s\n", minion.AcquistionDate)
+			fmt.Fprintf(v, "Description    :\n%s\n", wrapStringToSize(minion.Description, sizeX))
+		}
+	}
+	return nil
+}
+
+func makeOrchestrionMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 26
+	if v, err := g.SetView("orchestrion", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Orchestrions", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, orchestrion := range CHARACTER.Orchestrions {
+			fmt.Fprintln(v, orchestrion.Name)
+		}
+		if _, err := g.SetCurrentView("orchestrion"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
 	}
 	return nil
 }
