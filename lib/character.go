@@ -30,10 +30,12 @@ type Character struct {
 	Linkshells       []string
 	Achievements     []Achievement
 	Cards            []Card
+	Currencies       []Currency
 	Jobs             []Job
 	Minions          []Minion
 	Mounts           []Mount
 	Orchestrions     []Orchestrion
+	Reputations      []Reputation
 	Retainers        []*Retainer
 	Spells           []Spell
 }
@@ -161,6 +163,82 @@ func (c *Character) GetCards() {
 	}
 
 	c.Cards = cards
+}
+
+func (c *Character) GetCurrenciesAndRep() {
+	client := &http.Client{}
+	var currencies []Currency
+	var reputations []Reputation
+
+	req := lodestone.SetupRequest("currency", c.Id)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	currencyElements := doc.Find(".character__currency__list li")
+	// this is kinda weird, but Lodestone doesn't group the heading--lead classes
+	// consistenly
+	reputationElements := doc.Find(".character__reputation .heading--lead")
+
+	currencyElements.Each(func(_ int, currencyElement *goquery.Selection) {
+		currencyType := currencyElement.Find(".heading--lead").Text()
+		currencyElement.Find(".currency__box").Each(func(_ int, individualElement *goquery.Selection) {
+			currentAmount := ""
+			maximum := ""
+			thing := individualElement.Find(".currency__box__text__name")
+			name := thing.Text()
+			if len(thing.Nodes) > 0 {
+				amount := thing.Nodes[0].Parent.LastChild.Data
+				splitString := strings.Split(amount, "/")
+				if len(splitString) > 1 {
+					currentAmount = strings.TrimSpace(strings.Split(amount, "/")[0])
+					maximum = strings.TrimSpace(strings.Split(amount, "/")[1])
+				} else {
+					currentAmount = strings.TrimSpace(strings.Split(amount, "/")[0])
+				}
+			}
+			if currentAmount == "" {
+				currentAmount = strings.TrimSpace(currencyElement.Find(".currency__box__text").Text())
+			}
+			currencies = append(currencies, Currency{CurrentAmount: currentAmount, Maximum: maximum, Name: name, Type: currencyType})
+		})
+	})
+
+	c.Currencies = currencies
+
+	reputationElements.Each(func(index int, reputationElement *goquery.Selection) {
+		reputationType := reputationElement.Text()
+		// Player Comms
+		if index == 0 {
+			commNode := reputationElement.Parent().Find(".character-block__box")
+			name := commNode.Find(".character-block__name").Text()
+			currentAmount := commNode.Find(".character-block__value").Text()
+			maximum := ""
+			reputationLevel := ""
+			reputations = append(reputations, Reputation{CurrentAmount: currentAmount, Maximum: maximum, Name: name, ReputationLevel: reputationLevel, Type: reputationType})
+			// Beast Tribe
+		} else if index == 1 {
+			repNodeList := goquery.NewDocumentFromNode(reputationElement.Nodes[0].NextSibling.NextSibling)
+			repNodes := repNodeList.Find(".character-block__box--beast_tribe")
+			repNodes.Each(func(_ int, beastTribe *goquery.Selection) {
+				name := beastTribe.Find(".character-block__box--beast_tribe__name").Text()
+				splitString := strings.Split(beastTribe.Find(".character-block__point").Text(), "/")
+				currentAmount := strings.TrimSpace(splitString[0])
+				maximum := strings.TrimSpace(splitString[1])
+				reputationLevel := beastTribe.Find(".character-block__friendship").Text()
+				reputations = append(reputations, Reputation{CurrentAmount: currentAmount, Maximum: maximum, Name: name, ReputationLevel: reputationLevel, Type: reputationType})
+			})
+		}
+	})
+
+	c.Reputations = reputations
 }
 
 func (c *Character) GetJobs() {
