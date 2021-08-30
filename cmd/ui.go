@@ -93,6 +93,8 @@ func cursorDown(g *gocui.Gui, v *gocui.View) error {
 		menuLength = len(CHARACTER.Spells)
 	case "orchestrion":
 		menuLength = len(CHARACTER.Orchestrions)
+	case "card":
+		menuLength = len(CHARACTER.Cards)
 	}
 
 	if v != nil {
@@ -181,6 +183,10 @@ func switchMenu(g *gocui.Gui, nextMenu string) error {
 		return showSpellMenu(g)
 	case "orchestrion":
 		return showOrchestrionMenu(g)
+	case "card":
+		return showCardMenu(g)
+	case "goldsaucer":
+		return showGoldSaucerMenu(g)
 	}
 	return nil
 }
@@ -246,6 +252,20 @@ func showMountMenu(g *gocui.Gui) error {
 	return makeMountMenuLayout(g)
 }
 
+func showCardMenu(g *gocui.Gui) error {
+	if CHARACTER.Cards == nil {
+		CHARACTER.GetCards()
+	}
+	return makeCardMenuLayout(g)
+}
+
+func showGoldSaucerMenu(g *gocui.Gui) error {
+	if CHARACTER.GoldSaucer.MGP == "" {
+		CHARACTER.GetGoldSaucer()
+	}
+	return makeGoldSaucerMenuLayout(g)
+}
+
 func showOrchestrionMenu(g *gocui.Gui) error {
 	if CHARACTER.Orchestrions == nil {
 		CHARACTER.GetOrchestrions()
@@ -299,9 +319,9 @@ func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	case "Trust":
 		showMessage(g, selection)
 	case "The Gold Saucer":
-		showMessage(g, selection)
+		switchMenu(g, "goldsaucer")
 	case "Triple Triad":
-		showMessage(g, selection)
+		switchMenu(g, "card")
 	}
 }
 
@@ -327,6 +347,10 @@ func processCurrencyMenuChange(g *gocui.Gui, currency lib.Currency) {
 
 func processReputationMenuChange(g *gocui.Gui, reputation lib.Reputation) {
 	makeReputationDetailView(g, reputation)
+}
+
+func processCardMenuChange(g *gocui.Gui, card lib.Card) {
+	makeCardDetailView(g, card)
 }
 
 func processOrchestrionMenuChange(g *gocui.Gui, orchestrion lib.Orchestrion) {
@@ -400,6 +424,9 @@ func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
 	case "orchestrion":
 		selectedOrchestrion := CHARACTER.Orchestrions[oy+cy]
 		processOrchestrionMenuChange(g, selectedOrchestrion)
+	case "card":
+		selectedCard := CHARACTER.Cards[oy+cy]
+		processCardMenuChange(g, selectedCard)
 	}
 	return nil
 }
@@ -450,6 +477,12 @@ func keybindings(g *gocui.Gui) error {
 		return err
 	}
 	if err := g.SetKeybinding("profile", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("goldsaucer", gocui.KeyArrowLeft, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
 			return switchMenu(g, "character")
 		}); err != nil {
@@ -616,6 +649,27 @@ func keybindings(g *gocui.Gui) error {
 		}); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("card", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("card", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("card_detail")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("card", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
 	if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, delMsg); err != nil {
 		return err
 	}
@@ -646,6 +700,24 @@ func makeJobDetailView(g *gocui.Gui, job lib.Job) error {
 	return nil
 }
 
+func makeCardDetailView(g *gocui.Gui, card lib.Card) error {
+	g.DeleteView("card_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("card_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		sizeX, _ := v.Size()
+		v.Title = card.Name
+		fmt.Fprintf(v, "Acquired   : %t\n", card.Acquired)
+		fmt.Fprintf(v, "Rarity     : %d\n", card.Rarity)
+		fmt.Fprintf(v, "Type       : %s\n", card.Type)
+		fmt.Fprintf(v, "Strength   :\n  %s  \n%s   %s\n  %s  \n", card.AttackUp, card.AttackLeft, card.AttackRight, card.AttackDown)
+		fmt.Fprintf(v, "Description:\n%s\n", wrapStringToSize(card.Description, sizeX))
+	}
+
+	return nil
+}
 func makeOrchestrionDetailView(g *gocui.Gui, orchestrion lib.Orchestrion) error {
 	g.DeleteView("orchestrion_detail")
 	maxX, maxY := g.Size()
@@ -778,6 +850,47 @@ func makeMinionDetailView(g *gocui.Gui, minion *lib.Minion) error {
 	return nil
 }
 
+func makeCardMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 19
+	if v, err := g.SetView("card", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Cards", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, card := range CHARACTER.Cards {
+			fmt.Fprintln(v, card.Name)
+		}
+		if _, err := g.SetCurrentView("card"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
+	}
+	return nil
+}
+
+func makeGoldSaucerMenuLayout(g *gocui.Gui) error {
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("goldsaucer", 0, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Gold Saucer", CHARACTER.Name)
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		fmt.Fprintf(v, "Manderville Gold Saucer Points (MGP): %s\n\n", CHARACTER.GoldSaucer.MGP)
+		fmt.Fprintf(v, "Recent Triple Triad Tournament Results:\n%s\n\n", CHARACTER.GoldSaucer.TripleTriadTournamentResult)
+		fmt.Fprintf(v, "Jumbo Cactpot: %s\n", CHARACTER.GoldSaucer.JumboCactpot)
+		fmt.Fprintf(v, "Your Numbers: %s, %s, %s", CHARACTER.GoldSaucer.JumboCactpotNumberOne, CHARACTER.GoldSaucer.JumboCactpotNumberTwo, CHARACTER.GoldSaucer.JumboCactpotNumberThree)
+		if _, err := g.SetCurrentView("goldsaucer"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 func makeOrchestrionMenuLayout(g *gocui.Gui) error {
 	_, maxY := g.Size()
 	VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 26

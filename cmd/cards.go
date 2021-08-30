@@ -29,8 +29,14 @@ var cardsCmd = &cobra.Command{
 		c := lib.Character{Id: character_id}
 
 		c.GetCards()
-		fmt.Printf("You have %d cards:\n", len(c.Cards))
+		var acquiredCards []lib.Card
 		for _, card := range c.Cards {
+			if card.Acquired {
+				acquiredCards = append(acquiredCards, card)
+			}
+		}
+		fmt.Printf("You have %d cards:\n", len(acquiredCards))
+		for _, card := range acquiredCards {
 			fmt.Println(card.Name)
 		}
 	},

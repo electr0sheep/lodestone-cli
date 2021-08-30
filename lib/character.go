@@ -31,6 +31,7 @@ type Character struct {
 	Achievements     []Achievement
 	Cards            []Card
 	Currencies       []Currency
+	GoldSaucer       GoldSaucer
 	Jobs             []Job
 	Minions          []Minion
 	Mounts           []Mount
@@ -77,12 +78,6 @@ func (c *Character) GetAchievements() {
 	var achievements []Achievement
 
 	for page := 1; morePages; page++ {
-		// progressIndicator := map[int]string{
-		// 	0: ".  ",
-		// 	1: ".. ",
-		// 	2: "...",
-		// }
-		// fmt.Printf("\rGetting achievement page %d%s", page, progressIndicator[(page-1)%3])
 		req := lodestone.SetupMobileRequest(fmt.Sprintf("achievement/?page=%d", page), c.Id)
 
 		resp, err := client.Do(req)
@@ -98,7 +93,6 @@ func (c *Character) GetAchievements() {
 		achievementElements := doc.Find(".entry__achievement")
 
 		if achievementElements.Length() == 0 {
-			// fmt.Printf("\r                                 \r")
 			morePages = false
 		} else {
 			achievementElements.Each(func(_ int, achievementElement *goquery.Selection) {
@@ -127,12 +121,6 @@ func (c *Character) GetCards() {
 	var cards []Card
 
 	for page := 1; morePages; page++ {
-		// progressIndicator := map[int]string{
-		// 	0: ".  ",
-		// 	1: ".. ",
-		// 	2: "...",
-		// }
-		// fmt.Printf("\rGetting card page %d%s", page, progressIndicator[(page-1)%3])
 		req := lodestone.SetupRequest(fmt.Sprintf("goldsaucer/tripletriad/?hold=1&page=%d", page), c.Id)
 
 		resp, err := client.Do(req)
@@ -145,19 +133,28 @@ func (c *Character) GetCards() {
 		if err != nil {
 			panic(err)
 		}
-		cardElements := doc.Find(".name_inner")
+		cardElements := doc.Find(".tripletriad-card_list li")
 
 		if cardElements.Length() == 0 {
-			// fmt.Printf("\r                                 \r")
 			morePages = false
 		} else {
 			cardElements.Each(func(_ int, cardElement *goquery.Selection) {
-				name := cardElement.Text()
-				// there might be a better way to exclude cards that the character
-				// doesn't have, but this will be good enough for now
-				if name != "???" {
-					cards = append(cards, Card{Name: name})
+				cardAttackDown, _ := cardElement.Find(".strength .down").Attr("alt")
+				cardAttackLeft, _ := cardElement.Find(".strength .left").Attr("alt")
+				cardAttackRight, _ := cardElement.Find(".strength .right").Attr("alt")
+				cardAttackUp, _ := cardElement.Find(".strength .up").Attr("alt")
+				cardName := cardElement.Find(".name_inner").Text()
+				_, cardNotAcquired := cardElement.Attr("class")
+				cardRarity := len(cardElement.Find(".tripletriad-tooltip__card .rarity img").Nodes)
+				var cardType string
+				cardTypeElements := cardElement.Find(".tripletriad-tooltip__text .type span")
+				if len(cardTypeElements.Nodes) == 1 {
+					cardType = ""
+				} else {
+					cardType = cardTypeElements.Nodes[1].FirstChild.Data
 				}
+				cardDescription := cardElement.Find(".flavor").Text()
+				cards = append(cards, Card{Acquired: !cardNotAcquired, AttackDown: cardAttackDown, AttackLeft: cardAttackLeft, AttackRight: cardAttackRight, AttackUp: cardAttackUp, Description: cardDescription, Name: cardName, Rarity: cardRarity, Type: cardType})
 			})
 		}
 	}
@@ -239,6 +236,33 @@ func (c *Character) GetCurrenciesAndRep() {
 	})
 
 	c.Reputations = reputations
+}
+
+func (c *Character) GetGoldSaucer() {
+	client := &http.Client{}
+
+	req := lodestone.SetupRequest("goldsaucer", c.Id)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	goldSaucerElement := doc.Find(".character__content")
+	c.GoldSaucer.MGP = goldSaucerElement.Find(".character__currency__list p").Text()
+	c.GoldSaucer.TripleTriadTournamentResult = goldSaucerElement.Find(".character__goldsaucer__text").Nodes[0].FirstChild.Data
+	jumboCactpot := goquery.NewDocumentFromNode(goldSaucerElement.Find(".character__goldsaucer__text").Nodes[1])
+	c.GoldSaucer.JumboCactpot = strings.ReplaceAll(strings.ReplaceAll(jumboCactpot.Text(), "\t", ""), "\n", "")
+	numbers := jumboCactpot.Next().Text()
+	numbers = strings.Split(numbers, ": ")[1]
+	c.GoldSaucer.JumboCactpotNumberOne = strings.Split(numbers, ", ")[0]
+	c.GoldSaucer.JumboCactpotNumberTwo = strings.Split(numbers, ", ")[1]
+	c.GoldSaucer.JumboCactpotNumberThree = strings.Split(numbers, ", ")[2]
 }
 
 func (c *Character) GetJobs() {
@@ -405,7 +429,6 @@ func (c *Character) GetOrchestrions() {
 	if err != nil {
 		panic(err)
 	}
-	// orchestrionElements := doc.Find("li:not([class])").Find(".orchestrion-list__name")
 	orchestrionCategories := doc.Find(".orchestrion-category")
 
 	orchestrionCategories.Each(func(_ int, orchestrionCategory *goquery.Selection) {
@@ -419,9 +442,6 @@ func (c *Character) GetOrchestrions() {
 			name = strings.ReplaceAll(name, "\n", "")
 			// We need to massage the data a little bit. The names of the orchestrions
 			// in ffxivcollect are titles (i.e. The Maiden's Lament as opposed to The maiden's lament)
-			// name = strings.Title(name)
-			// name = strings.ReplaceAll(name, "'S", "'s")
-			// name = strings.ReplaceAll(name, "Ul'Dah", "Ul'dah")
 			whereToFind := orchestrionElement.Find(".orchestrion-detail__text").Text()
 			orchestrions = append(orchestrions, Orchestrion{Acquired: !unacquired, Category: category, Name: name, WhereToFind: whereToFind})
 		})
