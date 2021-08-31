@@ -39,6 +39,7 @@ type Character struct {
 	Reputations      []Reputation
 	Retainers        []*Retainer
 	Spells           []Spell
+	TrustCompanions  []TrustCompanion
 }
 
 func (c *Character) GetProfile() {
@@ -545,4 +546,59 @@ func (c *Character) GetSpells() {
 	})
 
 	c.Spells = spells
+}
+
+func (c *Character) GetTrustCompanions() {
+	// we could potentially use OCR for this but...no
+	// Lodestone does not have alt text for the job name
+	jobImgToNameMap := map[string]string{
+		"https://img.finalfantasyxiv.com/lds/h/Y/CUsKkwQg0YsGXCvTSTWxZJGWjA.png": "Academician",
+		"https://img.finalfantasyxiv.com/lds/h/L/X5p7csBphfKq3vl_PdIW3p7JVw.png": "Red Mage",
+		"https://img.finalfantasyxiv.com/lds/h/q/nEd3MVNYkrw9Egi7EUNdEcbAPs.png": "Gunbreaker",
+		"https://img.finalfantasyxiv.com/lds/h/b/RA89spswAAifoNgxiQO5AaiO44.png": "Astrologian",
+		"https://img.finalfantasyxiv.com/lds/h/k/xek2yUI81do0aLDXK4svDf-TSc.png": "Sorceress",
+		"https://img.finalfantasyxiv.com/lds/h/9/A30nNMNuyiNG3ZFIxYLBGETnMc.png": "Oracle of Light",
+		"https://img.finalfantasyxiv.com/lds/h/F/9oXamTz4kT1zFFEJF5xw0g_v9g.png": "All-Rounder",
+	}
+
+	client := &http.Client{}
+	req := lodestone.SetupMobileRequest("trust", c.Id)
+	var trustCompanions []TrustCompanion
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if resp.StatusCode == 404 {
+		lodestone.GetSessionToken()
+		req = lodestone.SetupMobileRequest("trust", c.Id)
+		resp, err = client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode == 404 {
+			cobra.CheckErr("There was an error retrieiving data from Lodestone. Is your session token correct?")
+		}
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	trustCompanionElements := doc.Find(".trust__character li")
+
+	trustCompanionElements.Each(func(_ int, trustCompanionElement *goquery.Selection) {
+		name := trustCompanionElement.Find(".trust__character__name").Text()
+		jobImgSrc, _ := trustCompanionElement.Find(".trust__job__name img").Attr("src")
+		job := jobImgToNameMap[jobImgSrc]
+		level := trustCompanionElement.Find(".trust__level__inner p").Text()
+		xp := trustCompanionElement.Find(".trust__data__exp span").Text()
+		nextLevelXp := trustCompanionElement.Find(".trust__data__next span").Text()
+		trustCompanions = append(trustCompanions, TrustCompanion{Name: name, Job: job, Level: level, Xp: xp, NextLevelXp: nextLevelXp})
+	})
+
+	c.TrustCompanions = trustCompanions
 }

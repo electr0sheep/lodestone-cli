@@ -95,6 +95,8 @@ func cursorDown(g *gocui.Gui, v *gocui.View) error {
 		menuLength = len(CHARACTER.Orchestrions)
 	case "card":
 		menuLength = len(CHARACTER.Cards)
+	case "trust":
+		menuLength = len(CHARACTER.TrustCompanions)
 	}
 
 	if v != nil {
@@ -187,6 +189,8 @@ func switchMenu(g *gocui.Gui, nextMenu string) error {
 		return showCardMenu(g)
 	case "goldsaucer":
 		return showGoldSaucerMenu(g)
+	case "trust":
+		return showTrustMenu(g)
 	}
 	return nil
 }
@@ -259,6 +263,12 @@ func showCardMenu(g *gocui.Gui) error {
 	return makeCardMenuLayout(g)
 }
 
+func showTrustMenu(g *gocui.Gui) error {
+	if CHARACTER.TrustCompanions == nil {
+		CHARACTER.GetTrustCompanions()
+	}
+	return makeTrustMenuLayout(g)
+}
 func showGoldSaucerMenu(g *gocui.Gui) error {
 	if CHARACTER.GoldSaucer.MGP == "" {
 		CHARACTER.GetGoldSaucer()
@@ -317,7 +327,7 @@ func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	case "Blue Magic Spellbook":
 		switchMenu(g, "spell")
 	case "Trust":
-		showMessage(g, selection)
+		switchMenu(g, "trust")
 	case "The Gold Saucer":
 		switchMenu(g, "goldsaucer")
 	case "Triple Triad":
@@ -347,6 +357,10 @@ func processCurrencyMenuChange(g *gocui.Gui, currency lib.Currency) {
 
 func processReputationMenuChange(g *gocui.Gui, reputation lib.Reputation) {
 	makeReputationDetailView(g, reputation)
+}
+
+func processTrustMenuChange(g *gocui.Gui, trustCompanion lib.TrustCompanion) {
+	makeTrustDetailView(g, trustCompanion)
 }
 
 func processCardMenuChange(g *gocui.Gui, card lib.Card) {
@@ -427,6 +441,9 @@ func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
 	case "card":
 		selectedCard := CHARACTER.Cards[oy+cy]
 		processCardMenuChange(g, selectedCard)
+	case "trust":
+		selectedTrustCompanion := CHARACTER.TrustCompanions[oy+cy]
+		processTrustMenuChange(g, selectedTrustCompanion)
 	}
 	return nil
 }
@@ -670,6 +687,27 @@ func keybindings(g *gocui.Gui) error {
 		}); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("trust", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("trust", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("trust", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("trust_detail")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
 	if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, delMsg); err != nil {
 		return err
 	}
@@ -700,6 +738,23 @@ func makeJobDetailView(g *gocui.Gui, job lib.Job) error {
 	return nil
 }
 
+func makeTrustDetailView(g *gocui.Gui, trustCompanion lib.TrustCompanion) error {
+	g.DeleteView("trust_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("trust_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = trustCompanion.Name
+		fmt.Fprintf(v, "Job  : %s\n", trustCompanion.Job)
+		fmt.Fprintf(v, "Level: %s\n", trustCompanion.Level)
+		fmt.Fprintf(v, "XP   : %s\n", trustCompanion.Xp)
+		fmt.Fprintf(v, "Next : %s\n", trustCompanion.NextLevelXp)
+	}
+
+	return nil
+}
+
 func makeCardDetailView(g *gocui.Gui, card lib.Card) error {
 	g.DeleteView("card_detail")
 	maxX, maxY := g.Size()
@@ -718,6 +773,7 @@ func makeCardDetailView(g *gocui.Gui, card lib.Card) error {
 
 	return nil
 }
+
 func makeOrchestrionDetailView(g *gocui.Gui, orchestrion lib.Orchestrion) error {
 	g.DeleteView("orchestrion_detail")
 	maxX, maxY := g.Size()
@@ -888,6 +944,28 @@ func makeGoldSaucerMenuLayout(g *gocui.Gui) error {
 		if _, err := g.SetCurrentView("goldsaucer"); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func makeTrustMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 19
+	if v, err := g.SetView("trust", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Trust", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, companion := range CHARACTER.TrustCompanions {
+			fmt.Fprintln(v, companion.Name)
+		}
+		if _, err := g.SetCurrentView("trust"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
 	}
 	return nil
 }
