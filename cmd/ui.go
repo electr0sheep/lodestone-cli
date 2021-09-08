@@ -97,6 +97,8 @@ func cursorDown(g *gocui.Gui, v *gocui.View) error {
 		menuLength = len(CHARACTER.Cards)
 	case "trust":
 		menuLength = len(CHARACTER.TrustCompanions)
+	case "quest":
+		menuLength = len(CHARACTER.Quests)
 	}
 
 	if v != nil {
@@ -191,6 +193,10 @@ func switchMenu(g *gocui.Gui, nextMenu string) error {
 		return showGoldSaucerMenu(g)
 	case "trust":
 		return showTrustMenu(g)
+	case "pvp":
+		return showPvpMenu(g)
+	case "quest":
+		return showQuestMenu(g)
 	}
 	return nil
 }
@@ -263,14 +269,29 @@ func showCardMenu(g *gocui.Gui) error {
 	return makeCardMenuLayout(g)
 }
 
+func showPvpMenu(g *gocui.Gui) error {
+	if (CHARACTER.PvpProfile == lib.PvpProfile{}) {
+		CHARACTER.GetPvpProfile()
+	}
+	return makePvpMenuLayout(g)
+}
+
+func showQuestMenu(g *gocui.Gui) error {
+	if CHARACTER.Quests == nil {
+		CHARACTER.GetQuests()
+	}
+	return makeQuestMenuLayout(g)
+}
+
 func showTrustMenu(g *gocui.Gui) error {
 	if CHARACTER.TrustCompanions == nil {
 		CHARACTER.GetTrustCompanions()
 	}
 	return makeTrustMenuLayout(g)
 }
+
 func showGoldSaucerMenu(g *gocui.Gui) error {
-	if CHARACTER.GoldSaucer.MGP == "" {
+	if (CHARACTER.GoldSaucer == lib.GoldSaucer{}) {
 		CHARACTER.GetGoldSaucer()
 	}
 	return makeGoldSaucerMenuLayout(g)
@@ -317,13 +338,13 @@ func processCharacterMenuSelection(g *gocui.Gui, selection string) {
 	case "Currencies/Reputation":
 		switchMenu(g, "rep")
 	case "Quests":
-		showMessage(g, selection)
+		switchMenu(g, "quest")
 	case "Achievements":
 		switchMenu(g, "achievement")
 	case "Orchestrion Roll":
 		switchMenu(g, "orchestrion")
 	case "PvP Profile":
-		showMessage(g, selection)
+		switchMenu(g, "pvp")
 	case "Blue Magic Spellbook":
 		switchMenu(g, "spell")
 	case "Trust":
@@ -357,6 +378,10 @@ func processCurrencyMenuChange(g *gocui.Gui, currency lib.Currency) {
 
 func processReputationMenuChange(g *gocui.Gui, reputation lib.Reputation) {
 	makeReputationDetailView(g, reputation)
+}
+
+func processQuestMenuChange(g *gocui.Gui, quest lib.Quest) {
+	makeQuestDetailView(g, quest)
 }
 
 func processTrustMenuChange(g *gocui.Gui, trustCompanion lib.TrustCompanion) {
@@ -444,6 +469,9 @@ func processMenuSelection(g *gocui.Gui, v *gocui.View) error {
 	case "trust":
 		selectedTrustCompanion := CHARACTER.TrustCompanions[oy+cy]
 		processTrustMenuChange(g, selectedTrustCompanion)
+	case "quest":
+		selectedQuest := CHARACTER.Quests[oy+cy]
+		processQuestMenuChange(g, selectedQuest)
 	}
 	return nil
 }
@@ -494,6 +522,12 @@ func keybindings(g *gocui.Gui) error {
 		return err
 	}
 	if err := g.SetKeybinding("profile", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("pvp", gocui.KeyArrowLeft, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
 			return switchMenu(g, "character")
 		}); err != nil {
@@ -687,6 +721,27 @@ func keybindings(g *gocui.Gui) error {
 		}); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("quest", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorDown(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("quest", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			cursorUp(g, v)
+			return processMenuSelection(g, v)
+		}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("quest", gocui.KeyArrowLeft, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			g.DeleteView("quest_detail")
+			return switchMenu(g, "character")
+		}); err != nil {
+		return err
+	}
 	if err := g.SetKeybinding("trust", gocui.KeyArrowDown, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
 			cursorDown(g, v)
@@ -735,6 +790,21 @@ func makeJobDetailView(g *gocui.Gui, job lib.Job) error {
 		fmt.Fprintf(v, "Level: %s\n", job.Level)
 		fmt.Fprintf(v, "XP   : %s\n", job.Xp)
 	}
+	return nil
+}
+
+func makeQuestDetailView(g *gocui.Gui, quest lib.Quest) error {
+	g.DeleteView("quest_detail")
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("quest_detail", VIEW_RIGHT_BOUND, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = quest.Name
+		fmt.Fprintf(v, "Completion Date: %s\n", quest.CompletionDate)
+		fmt.Fprintf(v, "Type           : %s\n", quest.Type)
+	}
+
 	return nil
 }
 
@@ -948,6 +1018,61 @@ func makeGoldSaucerMenuLayout(g *gocui.Gui) error {
 	return nil
 }
 
+func makePvpMenuLayout(g *gocui.Gui) error {
+	maxX, maxY := g.Size()
+	VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 17
+	if v, err := g.SetView("pvp", 0, 0, maxX-1, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>PvP", CHARACTER.Name)
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		fmt.Fprintf(v, "Faction   : %s\n", CHARACTER.PvpProfile.Faction)
+		fmt.Fprintf(v, "Rank      : %s\n", CHARACTER.PvpProfile.Rank)
+		fmt.Fprintf(v, "Total XP  : %s\n", CHARACTER.PvpProfile.TotalXp)
+		fmt.Fprintf(v, "Current XP: %s / %s\n", CHARACTER.PvpProfile.Xp, CHARACTER.PvpProfile.NextXp)
+
+		fmt.Fprintf(v, "\nFrontline Overall Performance\n")
+		fmt.Fprintf(v, "Campaigns   : %s\n", CHARACTER.PvpProfile.OverallPerformance.Campaigns)
+		fmt.Fprintf(v, "First Place : %s(Victory Rate: %s)\n", CHARACTER.PvpProfile.OverallPerformance.FirstPlaceWins, CHARACTER.PvpProfile.OverallPerformance.FirstPlaceWinPercentage)
+		fmt.Fprintf(v, "Second Place: %s(Victory Rate: %s)\n", CHARACTER.PvpProfile.OverallPerformance.SecondPlaceWins, CHARACTER.PvpProfile.OverallPerformance.SecondPlaceWinPercentage)
+		fmt.Fprintf(v, "Third Place : %s(Victory Rate: %s)\n", CHARACTER.PvpProfile.OverallPerformance.ThirdPlaceWins, CHARACTER.PvpProfile.OverallPerformance.ThirdPlaceWinPercentage)
+
+		fmt.Fprintf(v, "\nFrontline Weekly Performance\n")
+		fmt.Fprintf(v, "Campaigns   : %s\n", CHARACTER.PvpProfile.WeeklyPerformance.Campaigns)
+		fmt.Fprintf(v, "First Place : %s(Victory Rate: %s)\n", CHARACTER.PvpProfile.WeeklyPerformance.FirstPlaceWins, CHARACTER.PvpProfile.WeeklyPerformance.FirstPlaceWinPercentage)
+		fmt.Fprintf(v, "Second Place: %s(Victory Rate: %s)\n", CHARACTER.PvpProfile.WeeklyPerformance.SecondPlaceWins, CHARACTER.PvpProfile.WeeklyPerformance.SecondPlaceWinPercentage)
+		fmt.Fprintf(v, "Third Place : %s(Victory Rate: %s)\n", CHARACTER.PvpProfile.WeeklyPerformance.ThirdPlaceWins, CHARACTER.PvpProfile.WeeklyPerformance.ThirdPlaceWinPercentage)
+		if _, err := g.SetCurrentView("pvp"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func makeQuestMenuLayout(g *gocui.Gui) error {
+	_, maxY := g.Size()
+	VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 19
+	if v, err := g.SetView("quest", 0, 0, VIEW_RIGHT_BOUND, maxY-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = fmt.Sprintf("%s>Character>Quest", CHARACTER.Name)
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+		for _, quest := range CHARACTER.Quests {
+			fmt.Fprintln(v, quest.Name)
+		}
+		if _, err := g.SetCurrentView("quest"); err != nil {
+			return err
+		}
+		processMenuSelection(g, v)
+	}
+	return nil
+}
+
 func makeTrustMenuLayout(g *gocui.Gui) error {
 	_, maxY := g.Size()
 	VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 19
@@ -969,6 +1094,7 @@ func makeTrustMenuLayout(g *gocui.Gui) error {
 	}
 	return nil
 }
+
 func makeOrchestrionMenuLayout(g *gocui.Gui) error {
 	_, maxY := g.Size()
 	VIEW_RIGHT_BOUND = len(CHARACTER.Name) + 26

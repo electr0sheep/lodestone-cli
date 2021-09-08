@@ -8,12 +8,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-// trustCmd represents the trust command
-var trustCmd = &cobra.Command{
-	Use:                   "trust",
-	Short:                 "Displays info about trust companions",
+// questsCmd represents the quests command
+var questsCmd = &cobra.Command{
+	Use:                   "quests",
+	Short:                 "Gets quest info",
 	Args:                  cobra.MaximumNArgs(1),
-	Example:               "lodestone-cli trust 12345",
+	Example:               "lodestone-cli quests 12345",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		character_id := ""
@@ -29,23 +29,24 @@ var trustCmd = &cobra.Command{
 
 		c := lib.Character{Id: character_id}
 
-		c.GetTrustCompanions()
-		for _, companion := range c.TrustCompanions {
-			fmt.Println(companion.Name)
+		c.GetQuests()
+
+		for _, quest := range c.Quests {
+			fmt.Printf("%s(%s): %s\n", quest.Name, quest.Type, quest.CompletionDate)
 		}
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(trustCmd)
+	rootCmd.AddCommand(questsCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// trustCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// questsCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// trustCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// questsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

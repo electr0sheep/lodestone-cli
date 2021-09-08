@@ -36,6 +36,8 @@ type Character struct {
 	Minions          []Minion
 	Mounts           []Mount
 	Orchestrions     []Orchestrion
+	PvpProfile       PvpProfile
+	Quests           []Quest
 	Reputations      []Reputation
 	Retainers        []*Retainer
 	Spells           []Spell
@@ -71,6 +73,59 @@ func (c *Character) GetProfile() {
 		name := linkshellElement.Text()
 		c.Linkshells = append(c.Linkshells, name)
 	})
+}
+
+func (c *Character) GetQuests() {
+	questImgToTypeMap := map[string]string{
+		"https://img.finalfantasyxiv.com/lds/h/Z/9XnZtdj9tt-JPx87ugO9YuvaMk.png": "Feature",
+		"https://img.finalfantasyxiv.com/lds/h/Y/k084WBeNxF_tzO-OmsiqyhnhM8.png": "Repeatable",
+		"https://img.finalfantasyxiv.com/lds/h/B/zm91ban9oOhSjwHX3VDGQa9YQQ.png": "Side",
+		"https://img.finalfantasyxiv.com/lds/h/0/rXXFRzMV_PSfqqd-hJxGPionQs.png": "Main Scenario",
+		"https://img.finalfantasyxiv.com/lds/h/k/bGY5NmtoKaq5DtxmKcs0PfhMXQ.png": "Repeatable Feature",
+	}
+
+	client := &http.Client{}
+	morePages := true
+	var quests []Quest
+
+	for page := 1; morePages; page++ {
+		req := lodestone.SetupRequest(fmt.Sprintf("quest/?page=%d", page), c.Id)
+
+		resp, err := client.Do(req)
+
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+		doc, err := goquery.NewDocumentFromReader(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		questElements := doc.Find(".entry__quest")
+
+		if questElements.Length() == 0 {
+			morePages = false
+		} else {
+			questElements.Each(func(_ int, questElement *goquery.Selection) {
+				questName := strings.TrimSpace(questElement.Find(".entry__quest__name time").Nodes[0].NextSibling.NextSibling.Data)
+				questName = strings.ReplaceAll(questName, " ", "")
+				questCompletionDate := questElement.Find(".entry__quest__name time").Text()
+				if strings.Contains(questCompletionDate, "ldst_strftime(") {
+					// need to convert epoch to date
+					epoch := strings.Split(questCompletionDate, "ldst_strftime(")[1]
+					epoch = strings.Split(epoch, ",")[0]
+					timestamp, _ := strconv.ParseInt(epoch, 10, 64)
+					myDate := time.Unix(timestamp, 0)
+					questCompletionDate = fmt.Sprintf("%d/%d/%d", myDate.Month(), myDate.Day(), myDate.Year())
+				}
+				questImgSrc, _ := questElement.Find(".entry__quest__icon img").Attr("src")
+				questType := questImgToTypeMap[questImgSrc]
+				quests = append(quests, Quest{CompletionDate: questCompletionDate, Name: questName, Type: questType})
+			})
+		}
+	}
+
+	c.Quests = quests
 }
 
 func (c *Character) GetAchievements() {
@@ -601,4 +656,96 @@ func (c *Character) GetTrustCompanions() {
 	})
 
 	c.TrustCompanions = trustCompanions
+}
+
+func (c *Character) GetPvpProfile() {
+	// Lodestone does not have alt text for the faction
+	factionImgToNameMap := map[string]string{
+		"https://img.finalfantasyxiv.com/lds/h/0/nTf395pWDsBkoexQp9DdLaDrVU.png": "Maelstrom",
+		"???": "Twin Adders",
+		"??":  "Immortal Flames",
+	}
+
+	client := &http.Client{}
+	req := lodestone.SetupRequest("pvp", c.Id)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if resp.StatusCode == 404 {
+		lodestone.GetSessionToken()
+		req = lodestone.SetupRequest("pvp", c.Id)
+		resp, err = client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode == 404 {
+			cobra.CheckErr("There was an error retrieiving data from Lodestone. Is your session token correct?")
+		}
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	factionImgSrc, _ := doc.Find(".character__pvp__img img").Attr("src")
+	faction := factionImgToNameMap[factionImgSrc]
+	rank := strings.Split(doc.Find(".character__pvp__rank").Text(), ": ")[1]
+	title := doc.Find(".character__pvp__rank__title").Text()
+	totalXp := strings.Split(doc.Find(".character__pvp__exp--total").Text(), ": ")[1]
+	xp := strings.Split(strings.Split(doc.Find(".character__pvp__exp--next").Text(), ": ")[1], " / ")[0]
+	nextXp := strings.Split(strings.Split(doc.Find(".character__pvp__exp--next").Text(), ": ")[1], " / ")[1]
+
+	overallCampaignElement := goquery.NewDocumentFromNode(doc.Find(".character__pvp__profile").Nodes[0])
+	overallCampaigns := strings.Split(overallCampaignElement.Find(".character__pvp__data__played").Text(), ":")[1]
+	overallCampaignTableDataElements := overallCampaignElement.Find("td")
+	overallFirstPlaceWins := strings.Split(overallCampaignTableDataElements.Nodes[1].FirstChild.Data, "(")[0]
+	overallSecondPlaceWins := strings.Split(overallCampaignTableDataElements.Nodes[2].FirstChild.Data, "(")[0]
+	overallThirdPlaceWins := strings.Split(overallCampaignTableDataElements.Nodes[3].FirstChild.Data, "(")[0]
+	overallFirstPlaceWinPercentage := strings.Trim(strings.Split(overallCampaignTableDataElements.Nodes[1].FirstChild.Data, ": ")[1], ")")
+	overallSecondPlaceWinPercentage := strings.Trim(strings.Split(overallCampaignTableDataElements.Nodes[2].FirstChild.Data, ": ")[1], ")")
+	overallThirdPlaceWinPercentage := strings.Trim(strings.Split(overallCampaignTableDataElements.Nodes[3].FirstChild.Data, ": ")[1], ")")
+	overallPerformance := PvpPerformance{
+		Campaigns:                overallCampaigns,
+		FirstPlaceWins:           overallFirstPlaceWins,
+		FirstPlaceWinPercentage:  overallFirstPlaceWinPercentage,
+		SecondPlaceWins:          overallSecondPlaceWins,
+		SecondPlaceWinPercentage: overallSecondPlaceWinPercentage,
+		ThirdPlaceWins:           overallThirdPlaceWins,
+		ThirdPlaceWinPercentage:  overallThirdPlaceWinPercentage,
+	}
+
+	weeklyCampaignElement := goquery.NewDocumentFromNode(doc.Find(".character__pvp__profile").Nodes[1])
+	weeklyCampaigns := strings.Split(weeklyCampaignElement.Find(".character__pvp__data__played").Text(), ":")[1]
+	weeklyCampaignTableDataElements := weeklyCampaignElement.Find("td")
+	weeklyFirstPlaceWins := strings.Split(weeklyCampaignTableDataElements.Nodes[1].FirstChild.Data, "(")[0]
+	weeklySecondPlaceWins := strings.Split(weeklyCampaignTableDataElements.Nodes[2].FirstChild.Data, "(")[0]
+	weeklyThirdPlaceWins := strings.Split(weeklyCampaignTableDataElements.Nodes[3].FirstChild.Data, "(")[0]
+	weeklyFirstPlaceWinPercentage := strings.Trim(strings.Split(weeklyCampaignTableDataElements.Nodes[1].FirstChild.Data, ": ")[1], ")")
+	weeklySecondPlaceWinPercentage := strings.Trim(strings.Split(weeklyCampaignTableDataElements.Nodes[2].FirstChild.Data, ": ")[1], ")")
+	weeklyThirdPlaceWinPercentage := strings.Trim(strings.Split(weeklyCampaignTableDataElements.Nodes[3].FirstChild.Data, ": ")[1], ")")
+	weeklyPerformance := PvpPerformance{
+		Campaigns:                weeklyCampaigns,
+		FirstPlaceWins:           weeklyFirstPlaceWins,
+		FirstPlaceWinPercentage:  weeklyFirstPlaceWinPercentage,
+		SecondPlaceWins:          weeklySecondPlaceWins,
+		SecondPlaceWinPercentage: weeklySecondPlaceWinPercentage,
+		ThirdPlaceWins:           weeklyThirdPlaceWins,
+		ThirdPlaceWinPercentage:  weeklyThirdPlaceWinPercentage,
+	}
+
+	c.PvpProfile = PvpProfile{
+		Faction:            faction,
+		Rank:               rank,
+		Title:              title,
+		TotalXp:            totalXp,
+		Xp:                 xp,
+		NextXp:             nextXp,
+		OverallPerformance: overallPerformance,
+		WeeklyPerformance:  weeklyPerformance,
+	}
 }
